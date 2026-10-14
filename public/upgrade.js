@@ -3,7 +3,7 @@ const ORNAMENTS={
  star:{name:'꿈의 별',glyph:'✦',type:'dream',cost:3,color:'#9c8fbe'},leaf:{name:'초록 잎',glyph:'❧',type:'nature',cost:3,color:'#8ea66c'},wave:{name:'작은 물결',glyph:'≈',type:'sea',cost:3,color:'#80adbf'},heart:{name:'온기 한 조각',glyph:'♡',type:'warm',cost:3,color:'#ca9d9c'},moon:{name:'쉬어가는 달',glyph:'☾',type:'calm',cost:3,color:'#a9a48b'}
 };
 const DISCOVERIES={
- line:{title:'점이 남긴 길',hint:'하나의 흔적이 양쪽으로 길어지면.',check:s=>s.xp>=3},plane:{title:'선 안의 새로운 공간',hint:'윤곽이 만나면 안쪽이 생겨.',check:s=>s.xp>=9},volume:{title:'면의 다른 쪽',hint:'오래 함께한 면은 두께를 얻어.',check:s=>s.xp>=24},first:{title:'첫 흔적',hint:'아무것도 없는 곳에 말을 놓으면…',check:s=>s.xp>=1},eyes:{title:'눈을 뜬 화면',hint:'작은 흔적은 다른 형태가 될지도.',check:s=>s.xp>=11},landscape:{title:'나만의 풍경',hint:'조금 더 함께하면 화면 밖으로 퍼질 거야.',check:s=>s.xp>=14},flavors:{title:'다섯 가지 맛',hint:'하늘, 숲, 물, 온기, 쉼.',check:s=>s.unlocked.length>=5},feelings:{title:'표정 수집가',hint:'늘 같은 기분일 필요는 없어.',check:s=>Object.keys(EMOTIONS).filter(k=>k!=='neutral'&&s.feelings[k]>0).length>=8},mixed:{title:'두 마음의 얼굴',hint:'웃으면서 하품할 수도 있지.',check:s=>s.seenMixes.length>=1},mixedAll:{title:'복잡해도 괜찮아',hint:'서로 다른 두 마음을 여러 번 만나봐.',check:s=>s.seenMixes.length>=4},play:{title:'함께한 작은 놀이',hint:'말을 먹이는 것 말고도 함께할 일이 있어.',check:s=>s.plays>=1},decorate:{title:'내 손으로 만든 자리',hint:'세 조각이 놓일 자리를 찾아봐.',check:s=>s.placements.length>=3},bond:{title:'오래된 작은 친구',hint:'서로 다른 이야기들이 오래 쌓이면.',check:s=>s.xp>=110}
+ career:{title:'내가 고른 일',hint:'내 능력으로 할 수 있는 새로운 일을 찾아봐.',check:s=>!!s.life?.job},adult:{title:'나의 한 해',hint:'여러 해의 이야기가 쌓이면.',check:s=>s.xp>=14&&lifeAge(s)>=18},lifeStories:{title:'살아온 열 장',hint:'선택한 길들이 이야기가 돼.',check:s=>(s.life?.log.length||0)>=10},line:{title:'점이 남긴 길',hint:'하나의 흔적이 양쪽으로 길어지면.',check:s=>s.xp>=3},plane:{title:'선 안의 새로운 공간',hint:'윤곽이 만나면 안쪽이 생겨.',check:s=>s.xp>=9},volume:{title:'면의 다른 쪽',hint:'오래 함께한 면은 두께를 얻어.',check:s=>s.xp>=24},first:{title:'첫 흔적',hint:'아무것도 없는 곳에 말을 놓으면…',check:s=>s.xp>=1},eyes:{title:'눈을 뜬 화면',hint:'작은 흔적은 다른 형태가 될지도.',check:s=>s.xp>=11},landscape:{title:'나만의 풍경',hint:'조금 더 함께하면 화면 밖으로 퍼질 거야.',check:s=>s.xp>=14},flavors:{title:'다섯 가지 맛',hint:'하늘, 숲, 물, 온기, 쉼.',check:s=>s.unlocked.length>=5},feelings:{title:'표정 수집가',hint:'늘 같은 기분일 필요는 없어.',check:s=>Object.keys(EMOTIONS).filter(k=>k!=='neutral'&&s.feelings[k]>0).length>=8},mixed:{title:'두 마음의 얼굴',hint:'웃으면서 하품할 수도 있지.',check:s=>s.seenMixes.length>=1},mixedAll:{title:'복잡해도 괜찮아',hint:'서로 다른 두 마음을 여러 번 만나봐.',check:s=>s.seenMixes.length>=4},play:{title:'함께한 작은 놀이',hint:'말을 먹이는 것 말고도 함께할 일이 있어.',check:s=>s.plays>=1},decorate:{title:'내 손으로 만든 자리',hint:'세 조각이 놓일 자리를 찾아봐.',check:s=>s.placements.length>=3},bond:{title:'오래된 작은 친구',hint:'서로 다른 이야기들이 오래 쌓이면.',check:s=>s.xp>=110}
 };
 let activity=null,editing=false,dragging=false,toastTimer=null,upgradeInitialized=false;
 function normalizeUpgrade(s){
@@ -26,7 +26,7 @@ function renderUpgrade(){
  const newly=[];for(const[k,d]of Object.entries(DISCOVERIES))if(!state.discoveries.includes(k)&&d.check(state)){state.discoveries.push(k);newly.push(d.title)}
  if(newly.length&&upgradeInitialized)notifyDiscovery('새로운 발견 · '+newly.join(' · '));
  $('fragments').textContent=state.fragments+' 조각';$('discoveryButton').textContent='발견 '+state.discoveries.length+' / '+Object.keys(DISCOVERIES).length;
- $('closet').textContent='조각 상자 · '+state.fragments;
+ $('closetLabel').textContent='조각 상자 · ';$('collectionCount').textContent=String(state.fragments);
  $('editButton').textContent=editing?'배치 마치기 ✓':'자리 바꾸기';
  $('editButton').hidden=state.placements.length===0;
  document.body.classList.toggle('editing',editing);

@@ -1,6 +1,6 @@
 'use strict';
 // v0.7: local interpretation feedback, lasting food memory and a growth album.
-const GAME_VERSION='0.7.0';
+const GAME_VERSION='0.8.1';
 function foodKey(text){return 'word:'+text.normalize('NFKC').toLowerCase().replace(/\s+/g,' ').trim().replace(/[.!?…。、！？]+$/u,'')}
 function normalizeEvolution(s){
  if(!Array.isArray(s.eatenKeys))s.eatenKeys=[...new Set(s.history.map(h=>foodKey(h.text)))];

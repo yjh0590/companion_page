@@ -1,7 +1,7 @@
 {
   "name": "page-pet",
-  "version": "0.7.0",
+  "version": "0.8.1",
   "private": true,
-  "description": "A pet page growing from a point into a volume",
+  "description": "A pet page growing into its own life",
   "scripts": {"test": "node scripts/check.cjs"}
 }

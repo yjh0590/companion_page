@@ -10,7 +10,7 @@ function tick(){const now=Date.now(),hours=Math.max(0,Math.min(12,(now-state.las
 function save(){try{localStorage.setItem(KEY,JSON.stringify(state));$('saveStatus').textContent='이 브라우저에 자동 저장 · 계정 연결 준비 중'}catch(e){$('saveStatus').textContent='자동 저장 불가 · 보관함에서 저장 파일을 내려받아줘'}}
 function speak(t){$('speech').textContent=t}
 function dominant(){return Object.keys(TYPES).sort((a,b)=>state.counts[b]-state.counts[a])[0]}
-function render(){tick();const lv=1+Math.floor(state.xp/3),type=dominant(),grown=state.xp>0;
+function render(){tick();normalizeLife(state);const lv=1+Math.floor(state.xp/3),type=dominant(),grown=state.xp>0;
 $('nameLabel').textContent=state.name;$('level').textContent='Lv. '+lv;$('stage').textContent=lv<2?'갓 태어남':lv<4?'말랑한 어린 페이지':lv<7?'취향이 생긴 페이지':'나만의 반려 페이지';$('growthBar').style.width=(state.xp%3)/3*100+'%';$('growthText').textContent='다음 성장까지 '+(3-state.xp%3)+'번의 새로운 말';
 for(const k of ['hunger','joy','energy']){$(k).value=state[k];$(k+'Text').textContent=Math.round(state[k])+' / 100'}
 $('days').textContent='함께한 '+(1+Math.max(0,Math.floor((Date.now()-state.born)/86400000)))+'일';$('body').style.fill=grown&&state.counts[type]?TYPES[type].color:'#fff';$('habitat').style.background=grown&&state.counts[type]?TYPES[type].color+'88':'#eceee3';
@@ -19,10 +19,54 @@ $('mouth').setAttribute('d',!grown?'M103 210L396 216L396 270L99 275Z':state.slee
 $('cheeks').innerHTML=state.wear.includes('warm')?'<ellipse cx="105" cy="183" rx="26" ry="13" fill="#efa6a0" stroke="none"/><ellipse cx="390" cy="183" rx="26" ry="13" fill="#efa6a0" stroke="none"/>':'';
 $('decor').innerHTML=(state.wear.includes('nature')?'<path d="M251 31Q246 5 265 -8M254 15Q215 17 222 -8Q250 -11 254 15M256 5Q286 12 288 -16Q261 -21 256 5" fill="#9dbc69" stroke="#252820" stroke-width="5"/>':'')+(state.wear.includes('sea')?'<path d="M68 302Q95 285 122 302T176 302T230 302T284 302T338 302T392 302T446 302" stroke="#77b9d0" fill="none" stroke-width="8"/>':'');
 $('mood').textContent=state.sleeping?'呼… 잠깐 꿈꾸는 중'.replace('呼','후'):!grown?'조금 낯설어하는 중':state.hunger<25?'말 한 입이 생각나는 중':'네가 와서 반가운 중';$('sleep').textContent=state.sleeping?'☀ 깨우기':'☾ 쉬게 하기';$('traitTitle').textContent=state.counts[type]?TYPES[type].name:'아직 모든 것이 궁금해';$('traitDesc').textContent=state.counts[type]?TYPES[type].desc:'먹인 말에 따라 색과 표정, 장식이 달라져.';$('flavors').replaceChildren();for(const [k,t]of Object.entries(TYPES)){if(state.counts[k]){const s=document.createElement('span');s.textContent=t.icon+' '+t.label+' '+state.counts[k];$('flavors').append(s)}}$('collectionCount').textContent=state.unlocked.length+' / 5';$('history').replaceChildren();
-for(const h of state.history.slice(0,3)){const li=document.createElement('li'),sm=document.createElement('small');sm.textContent=new Date(h.at).toLocaleDateString('ko-KR')+' · '+(Object.hasOwn(MIXES,h.mix)?MIXES[h.mix].label:EMOTIONS[h.emotion||feelingOf(h.text)]?.label||'담담함')+' · '+(TYPES[h.type]?.label||'새로운 맛');li.append(sm,document.createTextNode('“'+h.text+'”'));$('history').append(li)}if(!state.history.length){const li=document.createElement('li');li.textContent='아직 먹은 말이 없어. 첫 추억을 만들어줘.';$('history').append(li)}renderPage();renderFeeling();renderUpgrade();renderDimension();renderEvolution();save()}
+for(const h of state.history.slice(0,3)){const li=document.createElement('li'),sm=document.createElement('small');sm.textContent=new Date(h.at).toLocaleDateString('ko-KR')+' · '+(Object.hasOwn(MIXES,h.mix)?MIXES[h.mix].label:EMOTIONS[h.emotion||feelingOf(h.text)]?.label||'담담함')+' · '+(TYPES[h.type]?.label||'새로운 맛');li.append(sm,document.createTextNode('“'+h.text+'”'));$('history').append(li)}if(!state.history.length){const li=document.createElement('li');li.textContent='아직 먹은 말이 없어. 첫 추억을 만들어줘.';$('history').append(li)}renderPage();renderFeeling();renderUpgrade();renderDimension();renderEvolution();renderLife();save()}
 function burst(icon){for(let i=0;i<7;i++){const el=document.createElement('span');el.className='particle';el.textContent=icon;el.style.setProperty('--x',(Math.random()*240-120)+'px');el.style.left=(35+Math.random()*30)+'%';$('particles').append(el);setTimeout(()=>el.remove(),1300)}}
 function animate(cls){$('pet').classList.remove('happy','eating');void $('pet').offsetWidth;$('pet').classList.add(cls);setTimeout(()=>$('pet').classList.remove(cls),1300)}
-$('feedForm').addEventListener('submit',e=>{e.preventDefault();if(busy||game||activity)return;const text=$('food').value.trim();if(!text){speak('빈 접시야! 먹고 싶은 말을 적어줘.');return}if(state.sleeping){speak('지금은 쉬는 중이야. 깨운 다음 먹여줘.');return}busy=true;$('feedForm').querySelector('button').disabled=true;animate('eating');speak('냠냠… 이 말은 어떤 맛일까?');const context=interpretFood(text),emotion=context.primary;const matches=Object.keys(TYPES).filter(k=>TYPES[k].words.test(text)&&!(k==='warm'&&['cool','angry'].includes(emotion)));const type=matches.sort((a,b)=>state.counts[a]-state.counts[b])[0]||'plain',repeat=knowsFood(text);setTimeout(()=>{tick();normalizeFeelings(state);state.emotion=emotion;state.mix=context.mix;state.situation=context.situation;state.contextVersion=1;if(!repeat)state.feelings[emotion]++;state.hunger=clamp(state.hunger+15);state.joy=clamp(state.joy+5);if(!repeat){state.xp++;rememberFood(text);if(type!=='plain'){state.counts[type]++;if(!state.unlocked.includes(type)){state.unlocked.push(type);state.wear.push(type)}}}state.history.unshift({text,type,emotion,mix:context.mix,situation:context.situation,grew:!repeat,at:Date.now()});state.history=state.history.slice(0,30);$('food').value='';render();burst(EMOTIONS[emotion].icon);speak(contextualReply()+(repeat?' 익숙한 맛이네.':[1,3,6,9,11,12,14,24].includes(state.xp)?' '+growthSpeech(type):''));busy=false;$('feedForm').querySelector('button').disabled=false},850)});
+function syncFeedControls(){
+ const locked=busy||!!activity;
+ $('feedForm').querySelector('button').disabled=locked;
+ $('food').disabled=!!activity;
+ $('feedForm').setAttribute('aria-busy',busy?'true':'false');
+}
+function feedingError(error,text){
+ console.error('Page pet feeding failed:',error);
+ if(!$('food').value.trim())$('food').value=text;
+ speak('말을 처리하다 잠깐 멈췄어. 다시 보내줘. 저장된 성장은 유지돼.');
+}
+$('feedForm').addEventListener('submit',e=>{
+ e.preventDefault();
+ // Korean IME confirmation must finish before Enter sends the sentence.
+ if($('food').dataset.composing==='true'||busy||game||activity)return;
+ const text=$('food').value.trim();
+ if(!text){speak('빈 접시야! 먹고 싶은 말을 적어줘.');return}
+ if(state.sleeping){speak('지금은 쉬는 중이야. 깨운 다음 먹여줘.');return}
+ let context,emotion,type,repeat;
+ try{
+  context=interpretFood(text);emotion=context.primary;
+  const matches=Object.keys(TYPES).filter(k=>TYPES[k].words.test(text)&&!(k==='warm'&&['cool','angry'].includes(emotion)));
+  type=matches.sort((a,b)=>state.counts[a]-state.counts[b])[0]||'plain';repeat=knowsFood(text);
+ }catch(error){feedingError(error,text);return}
+ busy=true;syncFeedControls();
+ // Clear only the submitted text now, so typing the next sentence is never wiped later.
+ $('food').value='';
+ animate('eating');speak('냠냠… 이 말은 어떤 맛일까?');
+ setTimeout(()=>{
+  const before=JSON.parse(JSON.stringify(state));
+  try{
+   tick();normalizeFeelings(state);normalizeLife(state);state.life.lastEmotionFromEvent=false;
+   state.emotion=emotion;state.mix=context.mix;state.situation=context.situation;state.contextVersion=1;
+   if(!repeat)state.feelings[emotion]++;
+   state.hunger=clamp(state.hunger+15);state.joy=clamp(state.joy+5);
+   if(!repeat){state.xp++;rememberFood(text);nourishLife(type,emotion);if(type!=='plain'){state.counts[type]++;if(!state.unlocked.includes(type)){state.unlocked.push(type);state.wear.push(type)}}}
+   state.history.unshift({text,type,emotion,mix:context.mix,situation:context.situation,grew:!repeat,at:Date.now()});state.history=state.history.slice(0,30);
+   render();burst(EMOTIONS[emotion].icon);
+   speak(contextualReply()+(repeat?' 익숙한 맛이네.':[1,3,6,9,11,12,14,24].includes(state.xp)?' '+growthSpeech(type):''));
+  }catch(error){state=before;save();feedingError(error,text)}
+  finally{busy=false;syncFeedControls()}
+ },850);
+});
+$('food').addEventListener('compositionstart',()=>{$('food').dataset.composing='true'});
+$('food').addEventListener('compositionend',()=>{$('food').dataset.composing='false'});
 document.querySelectorAll('[data-word]').forEach(b=>b.onclick=()=>{$('food').value=b.dataset.word;$('food').focus()});
 function stroke(){if(busy||game||activity||state.xp<1)return;if(state.sleeping){speak('잠든 얼굴이 편안해 보여.');return}if(Date.now()-lastCare<2000)return;lastCare=Date.now();state.joy=clamp(state.joy+6);animate('happy');burst('♡');speak(state.emotion==='cool'?'…싫지는 않아. 한 번만 더.':state.emotion==='sad'?'조용히 쓰다듬어줘서 고마워.':'간질간질해. 손길이 따뜻하네!');render()}
 $('pet').onclick=()=>{if(activity)return;if(game){game.hits++;animate('happy');burst('✧');speak('잡았다! '+game.hits+' / 5');if(game.hits>=5)finishPlay(true)}else stroke()};$('stroke').onclick=stroke;
@@ -76,3 +120,5 @@ initUpgrade();
 initDimensions();
 
 initEvolution();
+
+initLife();

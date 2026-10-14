@@ -65,7 +65,7 @@ const MIXES={
  affectionSad:{label:'좋아하지만 서운한',reply:'따뜻한 마음은 남아 있는데 입은 조금 삐죽해.'},
  angrySad:{label:'화나고 속상한',reply:'눈썹은 찌푸려지고 작은 물방울이 떨어졌어.'}
 };
-function cleanFeelingText(text){return text.replace(/(?:안\s*(?:슬프|슬퍼|우울|피곤|외로|힘들|설레|짜증)|(?:슬프|슬퍼|우울|피곤|외롭|힘들|설레|짜증)[가-힣]*?\s*(?:지\s*않|않아)|화\s*안\s*나)/g,'')}
+function cleanFeelingText(text){return text.replace(/(?:안\s*(?:슬프|슬퍼|우울|피곤|외로|힘들|설레|짜증|불안|걱정|무서|두려|초조|긴장|심심|후회|그립)|(?:슬프|슬퍼|우울|피곤|외롭|힘들|설레|짜증|불안|걱정|무섭|두렵|초조|긴장|심심|후회|그립)[가-힣]*?\s*(?:지\s*않|않아)|화\s*안\s*나)/g,'')}
 function analyzeWords(text){
  const clean=cleanFeelingText(text),found=new Set(FEELING_RULES.filter(([,r])=>r.test(clean)).map(([k])=>k));
  const affection=/사랑|좋아|좋다|고마|감사|소중|아끼/.test(clean)&&!/(안\s*좋|좋지\s*않|사랑하지\s*않|안\s*사랑)/.test(clean);
@@ -80,7 +80,7 @@ function analyzeWords(text){
 }
 const PERSONALITIES={lively:'활발한',cool:'시크한',calm:'차분한',curious:'호기심 많은',shy:'수줍은',playful:'장난기 많은'};
 function evolvePersonality(s){
- const scores={lively:s.feelings.lively,cool:s.feelings.cool+s.feelings.angry,calm:s.feelings.calm+s.feelings.sad,curious:s.feelings.curious,shy:s.feelings.shy,playful:s.feelings.playful};
+ const scores={lively:s.feelings.lively+(s.feelings.hopeful||0)+(s.feelings.proud||0)+(s.feelings.grateful||0),cool:s.feelings.cool+s.feelings.angry+(s.feelings.bored||0),calm:s.feelings.calm+s.feelings.sad+(s.feelings.regret||0)+(s.feelings.lonely||0),curious:s.feelings.curious,shy:s.feelings.shy+(s.feelings.anxious||0)+(s.feelings.awkward||0),playful:s.feelings.playful};
  if(!Object.hasOwn(PERSONALITIES,s.personality))s.personality=null;
  const candidate=Object.keys(scores).sort((a,b)=>scores[b]-scores[a])[0];
  if(s.xp>=5&&scores[candidate]>=3&&(!s.personality||scores[candidate]>=scores[s.personality]+3))s.personality=candidate;
