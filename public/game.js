@@ -2,7 +2,8 @@
 const $=id=>document.getElementById(id), KEY='page-pet-blank-v2';
 const TYPES={warm:{label:'다정함',color:'#ffe5cf',icon:'♡',name:'마음이 몽글몽글한 페이지',desc:'다정한 말이 쌓여 볼에 온기가 생겼어.',words:/고마|감사|사랑|좋아|잘했|괜찮|응원|행복/},dream:{label:'상상',color:'#e6ddff',icon:'✦',name:'별을 꿈꾸는 페이지',desc:'엉뚱한 상상을 먹고 별을 피웠어.',words:/별(?!로)|우주|달빛|달나라|밤하늘|꿈|상상|마법|하늘/},sea:{label:'바다',color:'#d5eef7',icon:'≈',name:'물결을 품은 페이지',desc:'파란 풍경을 먹고 작은 파도가 생겼어.',words:/바다|물결|물방울|파랑|파란|푸른|비가|비오는|비\s*와|빗|강물|파도/},nature:{label:'자연',color:'#e1efcf',icon:'♧',name:'새싹이 돋은 페이지',desc:'초록 이야기를 먹고 머리에 싹이 났어.',words:/나무|숲|초록|풀|꽃|새싹|봄|정원/},calm:{label:'차분함',color:'#eee5db',icon:'☾',name:'곁에서 쉬는 페이지',desc:'힘든 날의 말도 소중하게 먹었어. 같이 잠깐 쉬자.',words:/힘들|슬프|슬퍼|피곤|지쳐|외로|불안|쉬|잠/}};
 function fresh(){return {version:1,name:'이름 없는 페이지',born:Date.now(),last:Date.now(),xp:0,hunger:65,joy:60,energy:80,counts:Object.fromEntries(Object.keys(TYPES).map(k=>[k,0])),history:[],unlocked:[],wear:[],sleeping:false,plays:0}}
-let state=fresh(),busy=false,game=null,lastCare=0;
+let state=fresh(),busy=false,game=null,lastCare=0,combo=0,comboAt=0;
+const FEED_DELAY=350;
 function valid(s){return s&&s.version===1&&typeof s.name==='string'&&s.name.length<=24&&Number.isFinite(s.xp)&&s.xp>=0&&s.xp<100000&&['born','last','hunger','joy','energy','plays'].every(k=>Number.isFinite(s[k]))&&s.counts&&Object.keys(TYPES).every(k=>Number.isFinite(s.counts[k])&&s.counts[k]>=0)&&Array.isArray(s.unlocked)&&s.unlocked.every(k=>k in TYPES)&&Array.isArray(s.wear)&&s.wear.every(k=>s.unlocked.includes(k))&&Array.isArray(s.history)&&s.history.length<=30&&s.history.every(h=>typeof h.text==='string'&&h.text.length<=160&&Number.isFinite(h.at)&& (h.type==='plain'||h.type in TYPES))&&typeof s.sleeping==='boolean'}
 try{const saved=JSON.parse(localStorage.getItem(KEY));if(valid(saved))state=saved}catch(e){}
 const clamp=n=>Math.max(0,Math.min(100,n));
@@ -21,6 +22,9 @@ $('decor').innerHTML=(state.wear.includes('nature')?'<path d="M251 31Q246 5 265 
 $('mood').textContent=state.sleeping?'呼… 잠깐 꿈꾸는 중'.replace('呼','후'):!grown?'조금 낯설어하는 중':state.hunger<25?'말 한 입이 생각나는 중':'네가 와서 반가운 중';$('sleep').textContent=state.sleeping?'☀ 깨우기':'☾ 쉬게 하기';$('traitTitle').textContent=state.counts[type]?TYPES[type].name:'아직 모든 것이 궁금해';$('traitDesc').textContent=state.counts[type]?TYPES[type].desc:'먹인 말에 따라 색과 표정, 장식이 달라져.';$('flavors').replaceChildren();for(const [k,t]of Object.entries(TYPES)){if(state.counts[k]){const s=document.createElement('span');s.textContent=t.icon+' '+t.label+' '+state.counts[k];$('flavors').append(s)}}$('collectionCount').textContent=state.unlocked.length+' / 5';$('history').replaceChildren();
 for(const h of state.history.slice(0,3)){const li=document.createElement('li'),sm=document.createElement('small');sm.textContent=new Date(h.at).toLocaleDateString('ko-KR')+' · '+(Object.hasOwn(MIXES,h.mix)?MIXES[h.mix].label:EMOTIONS[h.emotion||feelingOf(h.text)]?.label||'담담함')+' · '+(TYPES[h.type]?.label||'새로운 맛');li.append(sm,document.createTextNode('“'+h.text+'”'));$('history').append(li)}if(!state.history.length){const li=document.createElement('li');li.textContent='아직 먹은 말이 없어. 첫 추억을 만들어줘.';$('history').append(li)}renderPage();renderFeeling();renderUpgrade();renderDimension();renderEvolution();renderLife();renderWords();save()}
 function burst(icon){for(let i=0;i<7;i++){const el=document.createElement('span');el.className='particle';el.textContent=icon;el.style.setProperty('--x',(Math.random()*240-120)+'px');el.style.left=(35+Math.random()*30)+'%';$('particles').append(el);setTimeout(()=>el.remove(),1300)}}
+// The sentence visibly flies from the writing line into the creature.
+function flyWord(text){const from=$('food').getBoundingClientRect(),to=$('pet').getBoundingClientRect(),still=typeof matchMedia==='function'&&matchMedia('(prefers-reduced-motion: reduce)').matches;const el=document.createElement('span');if(still||typeof el.animate!=='function')return;el.className='word-flight';el.textContent=text;el.style.left=(from.left+12)+'px';el.style.top=(from.top+from.height/2)+'px';document.body.append(el);const dx=to.left+to.width/2-from.left-12,dy=to.top+to.height*.55-from.top-from.height/2;el.animate([{transform:'translateY(-50%) scale(1)',opacity:1},{transform:'translate('+dx+'px,calc('+dy+'px - 50%)) scale(.15)',opacity:.15}],{duration:FEED_DELAY,easing:'cubic-bezier(.55,0,.8,.2)'}).onfinish=()=>el.remove()}
+function showGain(text){const el=document.createElement('span');el.className='gain';el.textContent=text;$('particles').append(el);setTimeout(()=>el.remove(),1200)}
 function animate(cls){$('pet').classList.remove('happy','eating');void $('pet').offsetWidth;$('pet').classList.add(cls);setTimeout(()=>$('pet').classList.remove(cls),1300)}
 function syncFeedControls(){
  const locked=busy||!!activity;
@@ -46,7 +50,7 @@ $('feedForm').addEventListener('submit',e=>{
   const matches=Object.keys(TYPES).filter(k=>TYPES[k].words.test(text)&&!(k==='warm'&&['cool','angry'].includes(emotion)));
   type=matches.sort((a,b)=>state.counts[a]-state.counts[b])[0]||'plain';repeat=knowsFood(text);
  }catch(error){feedingError(error,text);return}
- busy=true;syncFeedControls();
+ busy=true;syncFeedControls();flyWord(text);
  // Clear only the submitted text now, so typing the next sentence is never wiped later.
  $('food').value='';
  animate('eating');speak('냠냠… 이 말은 어떤 맛일까?');
@@ -57,13 +61,14 @@ $('feedForm').addEventListener('submit',e=>{
    state.emotion=emotion;state.mix=context.mix;state.situation=context.situation;state.contextVersion=1;
    if(!repeat)state.feelings[emotion]++;
    state.hunger=clamp(state.hunger+15);state.joy=clamp(state.joy+5);
+   if(!repeat){combo=Date.now()-comboAt<10000?combo+1:1;comboAt=Date.now();if(combo>=3)state.fragments=(state.fragments||0)+1}
    if(!repeat){state.xp++;rememberFood(text);nourishLife(type,emotion);if(type!=='plain'){state.counts[type]++;if(!state.unlocked.includes(type)){state.unlocked.push(type);state.wear.push(type)}}}
    state.history.unshift({text,type,emotion,mix:context.mix,situation:context.situation,grew:!repeat,at:Date.now()});state.history=state.history.slice(0,30);
-   render();burst(EMOTIONS[emotion].icon);
+   render();burst(EMOTIONS[emotion].icon);{const got=state.fragments-(before.fragments||0);showGain(repeat?'익숙한 맛':'+1 새 말'+(got>0?' · +'+got+' 조각':'')+(combo>=3?' · 연속 ×'+combo:''))}
    speak(contextualReply()+(repeat?' 익숙한 맛이네.':[1,3,6,9,11,12,14,24].includes(state.xp)?' '+growthSpeech(type):''));
   }catch(error){state=before;save();feedingError(error,text)}
   finally{busy=false;syncFeedControls()}
- },850);
+ },FEED_DELAY);
 });
 $('food').addEventListener('compositionstart',()=>{$('food').dataset.composing='true'});
 $('food').addEventListener('compositionend',()=>{$('food').dataset.composing='false'});

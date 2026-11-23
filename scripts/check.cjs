@@ -7,7 +7,7 @@ if(els.collectionCount){
  els.closet.children=[els.closetLabel,els.collectionCount].filter(Boolean);
  Object.defineProperty(els.closet,'textContent',{get(){return this.labelText||''},set(value){for(const child of this.children){for(const key of Object.keys(els))if(els[key]===child)delete els[key]}this.children=[];this.labelText=value}});
 }
-const context=vm.createContext({document,localStorage:{getItem:k=>saved[k]||null,setItem:(k,v)=>saved[k]=v},setTimeout:(f,ms)=>{if(ms===850)timers.push(f);return 1},clearTimeout(){},setInterval(){},console,alert(){},confirm:()=>true,Blob,URL,Date,Math});vm.runInContext(fs.readFileSync('public/emotions.js','utf8'),context);vm.runInContext(fs.readFileSync('public/upgrade.js','utf8'),context);vm.runInContext(fs.readFileSync('public/dimensions.js','utf8'),context);vm.runInContext(fs.readFileSync('public/evolution.js','utf8'),context);vm.runInContext(fs.readFileSync('public/life.js','utf8'),context);vm.runInContext(fs.readFileSync('public/words.js','utf8'),context);vm.runInContext(fs.readFileSync('public/game.js','utf8'),context);
+const context=vm.createContext({document,localStorage:{getItem:k=>saved[k]||null,setItem:(k,v)=>saved[k]=v},setTimeout:(f,ms)=>{if(ms===350)timers.push(f);return 1},clearTimeout(){},setInterval(){},console,alert(){},confirm:()=>true,Blob,URL,Date,Math});vm.runInContext(fs.readFileSync('public/emotions.js','utf8'),context);vm.runInContext(fs.readFileSync('public/upgrade.js','utf8'),context);vm.runInContext(fs.readFileSync('public/dimensions.js','utf8'),context);vm.runInContext(fs.readFileSync('public/evolution.js','utf8'),context);vm.runInContext(fs.readFileSync('public/life.js','utf8'),context);vm.runInContext(fs.readFileSync('public/words.js','utf8'),context);vm.runInContext(fs.readFileSync('public/game.js','utf8'),context);
 
 function feed(text){els.food.value=text;els.feedForm.handlers.submit({preventDefault(){}});timers.shift()()}
 assert.equal(document.body.dataset.dimension,'blank');assert.equal(els.firstDot.style.opacity,0);assert.equal(els.body.style.opacity,0);assert(els.careDock.inert);
@@ -153,3 +153,11 @@ assert(vm.runInContext("answerLifeEvent('같이 노래 만들자')",context)>=0)
 assert(vm.runInContext("state.life.log.some(r=>r.text.startsWith('「같이 노래 만들자」'))&&state.history[0].text==='같이 노래 만들자'",context));
 assert.equal(vm.runInContext("answerLifeEvent('   ')",context),-1);assert.notEqual(ansEvent,null);
 console.log('Verified: word fragments eat once, weaving, phrase book, answering the year in words.');
+// v0.14: quick consecutive new words build a combo that pays a bonus fragment from the third feed.
+vm.runInContext('combo=0;comboAt=0;state.sleeping=false',context);
+for(const t of ['연속 하나 사과','연속 둘 포도']){feed(t)}
+const comboBefore=vm.runInContext('state.fragments',context);feed('연속 셋 자두');
+assert.equal(vm.runInContext('combo',context),3);const comboGain=vm.runInContext('state.fragments',context)-comboBefore;
+vm.runInContext('comboAt=Date.now()-20000',context);const comboReset=vm.runInContext('state.fragments',context);feed('한참 뒤 바나나');
+assert.equal(vm.runInContext('combo',context),1);assert.equal(comboGain-(vm.runInContext('state.fragments',context)-comboReset),1);
+console.log('Verified: feeding combo bonus and reset.');

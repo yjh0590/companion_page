@@ -46,23 +46,25 @@ function renderWordSkin(){
  if(skinFrame===null&&!still&&typeof requestAnimationFrame==='function'){const step=t=>{const dt=skinLast?Math.min(.1,(t-skinLast)/1000):0;skinLast=t;skinOffset-=skinSpeed*dt;if(skinCycle&&skinOffset<-skinCycle)skinOffset+=skinCycle;skin.setAttribute('startOffset',skinOffset.toFixed(1));skinFrame=requestAnimationFrame(step)};skinFrame=requestAnimationFrame(step)}
 }
 // Fixed slots keep scraps apart and away from the face, the card and the writing line.
-const CHIP_SLOTS=[[66,13],[82,20],[93,33],[80,44],[92,55],[86,8],[56,9],[94,70],[34,10]],CHIP_SLOTS_NARROW=[[9,38],[91,38],[9,51],[91,51]];
+// Wide screens use the empty right side; narrow (stacked) layouts pin four scraps beside the creature.
+const CHIP_SLOTS=[[66,12],[80,21],[93,31],[84,44],[93,56],[86,7],[94,70],[76,61]];
 function chipSpot(text){
- if(chipSpots[text])return chipSpots[text];
- const slots=$('habitat').getBoundingClientRect().width<760?CHIP_SLOTS_NARROW:CHIP_SLOTS,used=new Set(Object.values(chipSpots).map(p=>p.slot)),slot=slots.findIndex((_,i)=>!used.has(i));
- return slot<0?null:chipSpots[text]={x:slots[slot][0],y:slots[slot][1],slot};
+ const hab=$('habitat').getBoundingClientRect(),narrow=hab.width<=900,count=narrow?4:CHIP_SLOTS.length;let s=chipSpots[text];
+ if(!s){const used=new Set(Object.values(chipSpots).map(p=>p.slot)),slot=[...Array(count).keys()].find(i=>!used.has(i));if(slot===undefined)return null;s=chipSpots[text]={slot}}
+ if(s.x!==undefined)return s;if(s.slot>=count)return null;if(!narrow)return {x:CHIP_SLOTS[s.slot][0],y:CHIP_SLOTS[s.slot][1]};
+ const pet=$('pet').getBoundingClientRect();return {x:s.slot%2?98:2,side:s.slot%2?"r":"l",y:(pet.top+pet.height*(s.slot<2?.3:.72)-hab.top)/hab.height*100};
 }
 function renderWordField(){
  const field=$('wordField');if(chipDrag)return;field.replaceChildren();if(state.xp<9||activity){field.hidden=true;return}field.hidden=false;
  const live=new Set(wordChips().map(c=>c.text));for(const t of Object.keys(chipSpots))if(!live.has(t))delete chipSpots[t];
- wordChips().forEach((c,i)=>{const b=document.createElement('button');b.className='word-chip'+(c.kind==='phrase'?' phrase':'');b.textContent=c.text;b.dataset.word=c.text;b.setAttribute('aria-label','말 조각 「'+c.text+'」 · 눌러서 먹이기, 다른 조각에 끌어서 엮기');const p=chipSpot(c.text);if(!p)return;b.style.left=p.x+'%';b.style.top=p.y+'%';b.style.setProperty('--tilt',((i*37)%9-4)+'deg');b.style.setProperty('--delay',(i*.7)+'s');
+ wordChips().forEach((c,i)=>{const b=document.createElement('button');b.className='word-chip'+(c.kind==='phrase'?' phrase':'');b.textContent=c.text;b.dataset.chip=c.text;b.setAttribute('aria-label','말 조각 「'+c.text+'」 · 눌러서 먹이기, 다른 조각에 끌어서 엮기');const p=chipSpot(c.text);if(!p)return;if(p.side)b.classList.add('edge-'+p.side);b.style.left=p.x+'%';b.style.top=p.y+'%';b.style.setProperty('--tilt',((i*37)%9-4)+'deg');b.style.setProperty('--delay',(i*.7)+'s');
   b.addEventListener('pointerdown',ev=>{if(ev.button!==0||busy||activity)return;ev.preventDefault();chipDrag={el:b,text:c.text,x:ev.clientX,y:ev.clientY,moved:false};b.setPointerCapture(ev.pointerId);b.classList.add('dragging')});
   b.addEventListener('pointermove',ev=>{if(!chipDrag||chipDrag.el!==b)return;if(Math.abs(ev.clientX-chipDrag.x)+Math.abs(ev.clientY-chipDrag.y)>6)chipDrag.moved=true;const r=$('habitat').getBoundingClientRect();b.style.left=((ev.clientX-r.left)/r.width*100)+'%';b.style.top=((ev.clientY-r.top)/r.height*100)+'%'});
   const drop=ev=>{if(!chipDrag||chipDrag.el!==b)return;const d=chipDrag;chipDrag=null;b.classList.remove('dragging');if(b.hasPointerCapture(ev.pointerId))b.releasePointerCapture(ev.pointerId);
    if(!d.moved){eatWord(d.text);return}
    const hit=el=>{const r=el.getBoundingClientRect();return ev.clientX>=r.left&&ev.clientX<=r.right&&ev.clientY>=r.top&&ev.clientY<=r.bottom};
    const other=[...field.children].find(o=>o!==b&&hit(o));
-   if(other&&weaveWords(d.text,other.dataset.word))return;
+   if(other&&weaveWords(d.text,other.dataset.chip))return;
    if(hit($('pet'))&&eatWord(d.text))return;
    const r=$('habitat').getBoundingClientRect();chipSpots[d.text]={x:clampRange((ev.clientX-r.left)/r.width*100,4,96),y:clampRange((ev.clientY-r.top)/r.height*100,10,62),slot:chipSpots[d.text]?.slot};renderWordField()};
   b.addEventListener('pointerup',drop);b.addEventListener('pointercancel',drop);
