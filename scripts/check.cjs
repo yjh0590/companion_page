@@ -68,7 +68,7 @@ for(const [text,feeling] of [['걱정되고 불안해','anxious'],['다음이 �
 const oldLife=JSON.parse(saved['page-pet-blank-v2']);delete oldLife.life;vm.runInContext('state='+JSON.stringify(oldLife)+';render()',context);assert.equal(JSON.parse(saved['page-pet-blank-v2']).xp,oldLife.xp);assert.deepEqual(JSON.parse(saved['page-pet-blank-v2']).placements,oldLife.placements);
 for(const year of [0,6,13,18,60,120]){vm.runInContext('state.life.turns='+Math.max(0,year-Math.floor(oldLife.xp/3))+';state.life.eventId=null;render()',context);const age=vm.runInContext('lifeAge()',context),ev=vm.runInContext('LIFE_EVENTS.find(e=>e.id===state.life.eventId)',context);assert(age>=ev.min&&age<=ev.max)}
 // v0.9 content: job-only events follow the current job, ids stay unique, choices use real stats/emotions.
-assert.equal(vm.runInContext('new Set(LIFE_EVENTS.map(e=>e.id)).size===LIFE_EVENTS.length&&LIFE_EVENTS.length',context),61);
+assert.equal(vm.runInContext('new Set(LIFE_EVENTS.map(e=>e.id)).size===LIFE_EVENTS.length&&LIFE_EVENTS.length',context),71);
 assert(vm.runInContext("LIFE_EVENTS.every(e=>e.choices.length>=3&&(!e.job||JOBS[e.job])&&(!e.season||SEASONS.includes(e.season))&&(!e.situation||SITUATIONS[e.situation])&&e.choices.every(c=>EMOTIONS[c.emotion]&&Object.keys(c.effects).every(k=>LIFE_STATS[k])&&Object.keys(c.need||{}).every(k=>LIFE_STATS[k])))",context));
 assert.equal(vm.runInContext("LIFE_EVENTS.filter(e=>e.choices.some(c=>c.need)).length",context),11);
 // Seasons gate seasonal events.
@@ -107,7 +107,7 @@ assert.equal(vm.runInContext("Object.keys(JOBS).every(k=>LIFE_EVENTS.some(e=>e.j
 for(const job of ['musician','courier',null]){vm.runInContext('state.life.job='+JSON.stringify(job)+';state.life.turns=30;state.life.eventId=null;render()',context);for(let n=0;n<40;n++){const e=vm.runInContext('LIFE_EVENTS.find(e=>e.id===state.life.eventId)',context);assert(!e.job||e.job===job,e.id);vm.runInContext('state.life.turns++;state.life.eventId=null;normalizeLife(state)',context)}}
 vm.runInContext("state.life.job='courier';render()",context);assert(els.lifeAccessory.innerHTML.length>0);
 assert.equal(vm.runInContext("josa('산책','을','를')+josa('노래','을','를')+josa('음악가','이','가')+josa('이야기꾼','이','가')",context),'산책을노래를음악가가이야기꾼이');
-console.log('Verified: 61 events, job-only events, 10 jobs, 6 hobbies, Korean particles.');
+console.log('Verified: 71 events, job-only events, 10 jobs, 8 hobbies, Korean particles.');
 console.log('Verified: life age, 20 age-filtered events, yearly choices, hobby cooldown, profession prerequisites, income and promotion, 8 extra emotions, save migration.');
 
 // Life panels are usable as rendered dialogs, not only as standalone logic.
@@ -124,3 +124,17 @@ const oldXp=JSON.parse(saved['page-pet-blank-v2']).xp;vm.runInContext('const ren
 // Enter during IME composition does not send an incomplete Korean word.
 els.food.handlers.compositionstart();els.food.value='한글 조합';const waiting=timers.length;els.feedForm.handlers.submit({preventDefault(){}});assert.equal(timers.length,waiting);els.food.handlers.compositionend();els.feedForm.handlers.submit({preventDefault(){}});timers.shift()();assert.equal(vm.runInContext('busy',context),false);
 console.log('Verified: DOM child preservation, 35 consecutive feeds, next draft preservation, failure rollback and unlock, Korean composition handling.');
+// v0.12: dreams, homes, retirement.
+vm.runInContext("state.life.turns=10;state.xp=24;state.life.dream=null;state.life.dreamsDone=[];state.life.job=null;state.life.retired=null;state.life.home=0;render()",context);
+assert(vm.runInContext('lifeAge()',context)>=13);
+assert(vm.runInContext("chooseDream('wholeLife')",context));assert.equal(vm.runInContext("chooseDream('dreamHome')",context),false);
+const fBefore=vm.runInContext('state.fragments',context);vm.runInContext("for(const k of Object.keys(LIFE_STATS))state.life.stats[k]=70;render()",context);
+assert.deepEqual(vm.runInContext('state.life.dreamsDone',context),['wholeLife']);assert.equal(vm.runInContext('state.life.dream',context),null);assert(vm.runInContext('state.fragments',context)>=fBefore+30);
+assert.equal(vm.runInContext("chooseDream('wholeLife')",context),false);assert(vm.runInContext("state.life.log.some(r=>r.text.includes('「고르게 자란 삶」을 이뤘다'))",context));
+vm.runInContext('state.fragments=19;render()',context);assert.equal(vm.runInContext('upgradeHome()',context),false);vm.runInContext('state.fragments=20',context);assert(vm.runInContext('upgradeHome()',context));assert.equal(vm.runInContext('state.fragments',context),0);
+const hev=vm.runInContext('state.life.eventId',context);vm.runInContext('chooseLifeEvent('+JSON.stringify(hev)+',0)',context);assert.equal(vm.runInContext('state.fragments',context),3);
+vm.runInContext("state.life.job='researcher';state.life.jobXp=12;state.life.turns=70;render()",context);assert.equal(vm.runInContext('retireJob()',context),true);
+assert.equal(vm.runInContext('state.life.job',context),null);assert.equal(vm.runInContext('pension(state.life)',context),6);assert(vm.runInContext("lifeOccupation().startsWith('은퇴한 전문 별 연구원')",context));
+vm.runInContext('state.fragments=0;render()',context);const rev=vm.runInContext('state.life.eventId',context);vm.runInContext('chooseLifeEvent('+JSON.stringify(rev)+',0)',context);assert(vm.runInContext('state.fragments',context)>=7);
+vm.runInContext("state.life.home=99;state.life.dream='nope';state.life.retired={job:'x'};normalizeLife(state)",context);assert.equal(vm.runInContext('state.life.home',context),4);assert.equal(vm.runInContext('state.life.dream',context),null);assert.equal(vm.runInContext('state.life.retired',context),null);
+console.log('Verified: dreams pay once, homes cost and pay yearly, retirement pension, save sanitizing.');
