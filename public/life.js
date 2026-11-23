@@ -120,10 +120,47 @@ const LIFE_ACHIEVEMENTS=[
  {id:'storyCollector',name:'이야기 수집가',desc:'서로 다른 사건 20개를 겪었다.',reward:8,test:l=>l.seen.length>=20},
  {id:'fourSeasons',name:'사계절',desc:'네 계절의 사건을 모두 겪었다.',reward:6,test:l=>new Set(LIFE_EVENTS.filter(e=>e.season&&l.seen.includes(e.id)).map(e=>e.season)).size===4},
  {id:'hobbyist',name:'다재다능',desc:'취미 네 가지를 즐겨봤다.',reward:6,test:l=>l.hobbiesTried.length>=4},
- {id:'special',name:'나만 할 수 있는 선택',desc:'능력이 열어준 특별한 선택을 했다.',reward:6,test:l=>l.specialChoices>=1}
+ {id:'special',name:'나만 할 수 있는 선택',desc:'능력이 열어준 특별한 선택을 했다.',reward:6,test:l=>l.specialChoices>=1},
+ {id:'friendMet',name:'첫 인연',desc:'이름을 가진 친구를 처음 만났다.',reward:3,test:l=>Object.keys(l.friends).length>=1},
+ {id:'bestFriend',name:'오랜 단짝',desc:'한 친구와 친밀도 60에 도달했다.',reward:8,test:l=>Object.values(l.friends).some(v=>v>=60)},
+ {id:'allFriends',name:'모두의 친구',desc:'여섯 인연을 모두 만났다.',reward:10,test:l=>Object.keys(l.friends).length===Object.keys(FRIENDS).length},
+ {id:'promoted',name:'믿고 맡기는 사람',desc:'한 직업에서 전문이 됐다.',reward:8,test:l=>!!l.job&&l.jobXp>=12},
+ {id:'shopper',name:'알뜰한 준비',desc:'인생 상점에서 다섯 번 준비했다.',reward:5,test:l=>l.itemsBought>=5}
 ];
 // Called from render() before save, so old saves get earned achievements retroactively.
-function checkLifeAchievements(){const l=state.life,age=lifeAge();if(state.xp<14)return;for(const a of LIFE_ACHIEVEMENTS){if(l.achievements.includes(a.id)||!a.test(l,age))continue;l.achievements.push(a.id);state.fragments+=a.reward;l.log.unshift({age,text:'업적 「'+a.name+'」 · '+a.reward+'조각'});l.log=l.log.slice(0,60);notifyDiscovery('인생 업적 「'+a.name+'」 달성 · '+a.reward+'조각')}}
+function checkLifeAchievements(){const l=state.life,age=lifeAge();if(state.xp<14)return;meetFriends();for(const a of LIFE_ACHIEVEMENTS){if(l.achievements.includes(a.id)||!a.test(l,age))continue;l.achievements.push(a.id);state.fragments+=a.reward;l.log.unshift({age,text:'업적 「'+a.name+'」 · '+a.reward+'조각'});l.log=l.log.slice(0,60);notifyDiscovery('인생 업적 「'+a.name+'」 달성 · '+a.reward+'조각')}}
+// v0.11: friends with bonds and their own events, a small life shop, promotions.
+const FRIENDS={
+ kong:{name:'콩',icon:'•',meetAge:2,stat:'social',desc:'옆 화면의 작은 점. 처음 사귄 친구.',line:'콩이랑 점 굴리기를 했어. 여전히 제일 편한 친구야.'},
+ mori:{name:'모리',icon:'▤',meetAge:7,stat:'knowledge',desc:'책 냄새를 좋아하는 조용한 페이지.',line:'모리가 추천해 준 책을 같이 읽었어.'},
+ haru:{name:'하루',icon:'↗',meetAge:10,stat:'stamina',desc:'가만히 있지 못하는 달리기 선수.',line:'하루랑 화면 끝까지 달리기 시합을 했어!'},
+ sori:{name:'소리',icon:'♪',meetAge:14,stat:'creativity',desc:'혼잣말도 노래처럼 하는 페이지.',line:'소리가 만든 노래에 내가 가사를 붙였어.'},
+ gyeol:{name:'결',icon:'❧',meetAge:25,stat:'creativity',desc:'새 이웃. 무엇이든 키우고 가꾼다.',line:'결의 정원에서 새싹 이름을 같이 지었어.'},
+ nuri:{name:'누리',icon:'☾',meetAge:40,stat:'social',desc:'마을에서 가장 오래 산 이웃 어른.',line:'누리가 옛날이야기를 들려줬어. 처음 듣는 이야기였어.'}
+};
+LIFE_EVENTS.push(
+ lifeEvent('kongPromise',2,120,'콩과의 약속','콩이 오래된 비밀 장소를 보여주겠다고 한다.',[lifeChoice('꼭 비밀로 하기',{social:6},'grateful','둘만 아는 장소가 생겼다.'),lifeChoice('그곳을 같이 꾸미기',{creativity:5,social:2},'playful','비밀 장소에 둘의 무늬가 새겨졌다.'),lifeChoice('지도에 표시해 두기',{knowledge:5},'curious','언제든 다시 찾아올 수 있게 됐다.')],{friend:'kong'}),
+ lifeEvent('moriBook',7,120,'모리의 책방','모리가 작은 책방을 열고 첫 손님으로 초대했다.',[lifeChoice('하루 종일 읽기',{knowledge:7},'calm','시간 가는 줄 몰랐다.'),lifeChoice('책방 간판 그려주기',{creativity:6},'proud','모리가 간판을 보고 한참 웃었다.'),lifeChoice('손님을 데려오기',{social:6},'grateful','작은 책방이 북적였다.')],{friend:'mori'}),
+ lifeEvent('haruRace',10,120,'하루의 장거리 달리기','하루가 마을을 한 바퀴 도는 달리기에 같이 나가자고 한다.',[lifeChoice('끝까지 같이 뛰기',{stamina:8},'lively','숨이 턱까지 찼지만 나란히 들어왔다.'),lifeChoice('응원 깃발 만들기',{creativity:5,social:2},'playful','하루가 깃발을 보고 속도를 올렸다.'),lifeChoice('코스를 함께 짜기',{knowledge:5},'curious','오르막을 피하는 길을 찾아냈다.')],{friend:'haru'}),
+ lifeEvent('soriDuet',14,120,'소리와 이중창','소리가 무대에서 함께 노래하자고 한다.',[lifeChoice('화음을 맡기',{creativity:6,social:2},'proud','두 목소리가 하나로 겹쳤다.'),lifeChoice('긴장해도 무대에 서기',{social:6},'anxious','떨렸지만 소리가 손을 잡아줬다.'),lifeChoice('무대 뒤에서 반주하기',{knowledge:3,creativity:4},'calm','보이지 않는 자리에서 노래를 받쳤다.')],{friend:'sori'}),
+ lifeEvent('gyeolGarden',25,120,'결의 정원 초대','결이 가장 아끼는 꽃이 피었다며 부른다.',[lifeChoice('꽃 옆에서 그림 그리기',{creativity:6},'calm','꽃이 지기 전에 그림으로 남겼다.'),lifeChoice('씨앗 받아 오기',{stamina:3,knowledge:3},'hopeful','내 창가에도 같은 꽃이 필 것이다.'),lifeChoice('정원 일을 도와주기',{stamina:6},'grateful','흙 묻은 손으로 함께 웃었다.')],{friend:'gyeol'}),
+ lifeEvent('nuriTea',40,120,'누리의 찻잔','누리가 아끼는 찻잔에 차를 따라준다.',[lifeChoice('옛이야기를 청하기',{knowledge:6},'curious','마을이 처음 생긴 날의 이야기를 들었다.'),lifeChoice('내 고민을 털어놓기',{social:6},'grateful','누리는 대답 대신 차를 한 잔 더 따랐다.'),lifeChoice('다음엔 내가 대접하기로 하기',{social:4,creativity:2},'hopeful','다음 만남의 약속이 생겼다.')],{friend:'nuri'})
+);
+const LIFE_ITEMS={
+ book:{name:'두꺼운 책',icon:'▤',cost:12,stat:'knowledge',amount:5},
+ paint:{name:'물감 세트',icon:'✎',cost:12,stat:'creativity',amount:5},
+ shoes:{name:'가벼운 운동화',icon:'♧',cost:12,stat:'stamina',amount:5},
+ invite:{name:'초대장 꾸러미',icon:'✉',cost:12,stat:'social',amount:5},
+ reroll:{name:'다른 이야기 듣기',icon:'↻',cost:6}
+};
+const PROMOTION_BONUS={숙련:5,전문:10,거장:20};
+function lifeEligible(s){const l=s.life,age=lifeAge(s);return LIFE_EVENTS.filter(e=>age>=e.min&&age<=e.max&&(!e.job||e.job===l.job)&&(!e.season||e.season===lifeSeason(s))&&(!e.friend||(l.friends?.[e.friend]||0)>=30))}
+function meetFriends(){const l=state.life,age=lifeAge();for(const[k,f]of Object.entries(FRIENDS)){if(Object.hasOwn(l.friends,k)||age<f.meetAge)continue;l.friends[k]=10;l.log.unshift({age,text:'새 인연 「'+f.name+'」 · '+f.desc});l.log=l.log.slice(0,60);notifyDiscovery('새로운 인연 · '+f.icon+' '+f.name)}}
+function spendTimeWith(id){normalizeLife(state);const l=state.life,f=FRIENDS[id];if(busy||activity||state.xp<14||!f||!Object.hasOwn(l.friends,id)||l.friendTurn===l.turns)return false;l.friendTurn=l.turns;l.friends[id]=Math.min(100,l.friends[id]+10);l.stats[f.stat]=clampRange(l.stats[f.stat]+2,0,100);state.joy=clamp(state.joy+3);if(l.friends[id]===30)l.log.unshift({age:lifeAge(),text:josa(f.name,'과','와')+' 한층 가까워졌다. 특별한 이야기가 찾아올지도 몰라.'});render();speak(f.line+' 친밀도 '+l.friends[id]+'.');return true}
+function buyLifeItem(key){normalizeLife(state);const l=state.life,item=LIFE_ITEMS[key];if(busy||activity||state.xp<14||!item||state.fragments<item.cost)return false;
+ if(item.stat){if(l.boughtTurn===l.turns)return false;l.boughtTurn=l.turns;l.stats[item.stat]=clampRange(l.stats[item.stat]+item.amount,0,100)}
+ else{const others=lifeEligible(state).filter(e=>e.id!==l.eventId);if(!others.length)return false;const fresh=others.filter(e=>!l.seen.includes(e.id)),pool=fresh.length?fresh:others;l.eventId=pool[(l.turns+l.rerolls++)%pool.length].id}
+ state.fragments-=item.cost;l.itemsBought++;render();speak(item.stat?josa(item.name,'으로','로')+' '+LIFE_STATS[item.stat]+'이 '+item.amount+' 올랐어.':'다른 이야기가 찾아왔어. 「'+LIFE_EVENTS.find(e=>e.id===l.eventId).title+'」');return true}
 function lifeAge(s=state){return Math.min(120,Math.floor(s.xp/3)+(s.life?.turns||0))}
 function lifeStage(age){return age<6?'유년기':age<13?'배움기':age<18?'탐색기':age<60?'독립기':'여유기'}
 function normalizeLife(s){
@@ -140,7 +177,10 @@ function normalizeLife(s){
  if(!Array.isArray(l.jobsTried))l.jobsTried=[];l.jobsTried=[...new Set(l.jobsTried.filter(k=>Object.hasOwn(JOBS,k)))];if(l.job&&!l.jobsTried.includes(l.job))l.jobsTried.push(l.job);
  if(!Array.isArray(l.hobbiesTried))l.hobbiesTried=[];l.hobbiesTried=[...new Set(l.hobbiesTried.filter(k=>Object.hasOwn(HOBBIES,k)))];
  if(!Number.isInteger(l.specialChoices)||l.specialChoices<0)l.specialChoices=0;
- const eligible=LIFE_EVENTS.filter(e=>lifeAge(s)>=e.min&&lifeAge(s)<=e.max&&(!e.job||e.job===l.job)&&(!e.season||e.season===lifeSeason(s)));
+ if(!l.friends||typeof l.friends!=='object'||Array.isArray(l.friends))l.friends={};for(const k of Object.keys(l.friends))if(!Object.hasOwn(FRIENDS,k)||!Number.isFinite(l.friends[k]))delete l.friends[k];else l.friends[k]=clampRange(Math.round(l.friends[k]),0,100);
+ for(const k of ['friendTurn','boughtTurn'])if(!Number.isFinite(l[k]))l[k]=-1;
+ for(const k of ['rerolls','itemsBought'])if(!Number.isInteger(l[k])||l[k]<0)l[k]=0;
+ const eligible=lifeEligible(s);
  if(!eligible.some(e=>e.id===l.eventId)){const fresh=eligible.filter(e=>!l.seen.includes(e.id));const pool=fresh.length?fresh:eligible;l.eventId=pool[l.turns%pool.length].id}
 }
 function jobLevel(){return state.life.jobXp>=25?'거장':state.life.jobXp>=12?'전문':state.life.jobXp>=5?'숙련':'신입'}
@@ -161,10 +201,11 @@ function skillTags(effects){return Object.entries(effects).map(([k,v])=>LIFE_STA
 function chooseLifeEvent(id,index){if(busy||activity||state.xp<14)return false;normalizeLife(state);const l=state.life;if(l.eventId!==id)return false;const e=LIFE_EVENTS.find(e=>e.id===id),c=e?.choices[index];if(!c||!meetsNeed(c.need))return false;if(c.need)l.specialChoices++;
  const age=lifeAge();for(const[k,v]of Object.entries(c.effects))l.stats[k]=clampRange(l.stats[k]+v,0,100);
  l.stats[HOBBIES[l.hobby].stat]=clampRange(l.stats[HOBBIES[l.hobby].stat]+1,0,100);
- let reward=2;if(l.job){l.jobYears++;l.jobXp++;reward=JOBS[l.job].income+(l.jobXp>=12?2:l.jobXp>=5?1:0);l.stats[JOBS[l.job].stat]=clampRange(l.stats[JOBS[l.job].stat]+1,0,100)}
+ let reward=2,promo=null;if(l.job){const was=jobLevel();l.jobYears++;l.jobXp++;if(jobLevel()!==was)promo=jobLevel();reward=JOBS[l.job].income+(l.jobXp>=12?2:l.jobXp>=5?1:0);l.stats[JOBS[l.job].stat]=clampRange(l.stats[JOBS[l.job].stat]+1,0,100)}
  state.fragments+=reward;l.turns++;l.log.unshift({age,text:e.title+' — '+c.result+' · '+reward+'조각'});l.log=l.log.slice(0,60);if(!l.seen.includes(e.id))l.seen.push(e.id);l.eventId=null;
  state.emotion=c.emotion;state.mix=null;state.situation=e.situation||{failedWork:'setback',friendConflict:'reconcile',reunion:'reconcile',school:'beginning',future:'beginning',neverTooLate:'beginning',busyYear:'rest',recognition:'success',quietDay:'rest'}[e.id]||null;l.lastEmotionFromEvent=true;state.contextVersion=1;state.feelings[c.emotion]++;state.joy=clamp(state.joy+4);if(c.effects.stamina)state.energy=clamp(state.energy+5);
- render();speak(c.result+' 한 해가 지나 '+lifeAge()+'세가 됐어.');return true;
+ if(promo){const bonus=PROMOTION_BONUS[promo],j=JOBS[l.job];state.fragments+=bonus;l.stats[j.stat]=clampRange(l.stats[j.stat]+3,0,100);state.emotion='proud';l.log.unshift({age:lifeAge(),text:josa(promo+' '+j.name,'으로','로')+' 인정받았다 · 보너스 '+bonus+'조각'});l.log=l.log.slice(0,60);notifyDiscovery(j.icon+' '+promo+' '+j.name+' 승진 · '+bonus+'조각')}
+ render();speak(promo?c.result+' 그리고 '+josa(promo+' '+JOBS[l.job].name,'이','가')+' 됐어! 노력이 인정받았어.':c.result+' 한 해가 지나 '+lifeAge()+'세가 됐어.');return true;
 }
 function jobAvailable(key){normalizeLife(state);const j=JOBS[key];return !!j&&lifeAge()>=18&&Object.entries(j.requires).every(([k,v])=>state.life.stats[k]>=v)}
 function takeJob(key){if(busy||activity||!jobAvailable(key))return false;const l=state.life;if(l.job===key)return false;l.job=key;if(!l.jobsTried.includes(key))l.jobsTried.push(key);l.jobYears=0;l.jobXp=0;l.log.unshift({age:lifeAge(),text:JOBS[key].name+'의 길을 시작했다.'});l.log=l.log.slice(0,60);render();speak(josa(JOBS[key].name,'이','가')+' 됐어. 다음 한 해부터 경험과 조각이 쌓여.');return true}
@@ -173,7 +214,9 @@ function openLife(){if(busy||activity||state.xp<14)return;normalizeLife(state);o
  const note=document.createElement('p');note.textContent='새로운 말 3개 또는 아래의 한 해 선택 1번마다 1살 자라. 접속하지 않는 동안 나이는 늘지 않아.';$('drawerContent').append(note);const skills=document.createElement('div');skills.className='life-quick-stats';for(const[k,label]of Object.entries(LIFE_STATS)){const badge=document.createElement('span');badge.textContent=label+' '+Math.round(l.stats[k])+'/100';skills.append(badge)}$('drawerContent').append(skills);
  const e=LIFE_EVENTS.find(e=>e.id===l.eventId),card=document.createElement('section');card.className='life-event';const h=document.createElement('h3');h.textContent=e.title;const p=document.createElement('p');p.textContent=e.text;card.append(h,p);for(let i=0;i<e.choices.length;i++){const c=e.choices[i],b=button((c.need?'★ ':'')+c.text+'\n'+skillTags(c.effects)+(c.need?' · 조건 '+Object.entries(c.need).map(([k,v])=>LIFE_STATS[k]+' '+v).join(' · '):''),()=>{if(chooseLifeEvent(e.id,i))openLife()},card);b.className='life-choice'+(c.need?' special':'');b.disabled=!meetsNeed(c.need)}$('drawerContent').append(card);
  const hobbies=document.createElement('div');hobbies.className='hobby-list';$('drawerContent').append(hobbies);for(const[k,v]of Object.entries(HOBBIES)){const b=button(v.icon+' '+v.label,()=>{l.hobby=k;render();openLife()},hobbies);b.classList.toggle('active',l.hobby===k)}const practice=button(l.trainedTurn===l.turns?'올해의 취미 활동 완료':'취미 즐기기 · '+LIFE_STATS[HOBBIES[l.hobby].stat]+' +3',()=>{if(practiceHobby())openLife()},$('drawerContent'));practice.disabled=l.trainedTurn===l.turns;
- button('직업과 다음 길 보기',openCareers,$('drawerContent'));{const t=document.createElement('h3');t.textContent='인생 업적 '+l.achievements.length+'/'+LIFE_ACHIEVEMENTS.length;const list=document.createElement('ul');list.className='life-achievements';for(const a of LIFE_ACHIEVEMENTS){const li=document.createElement('li');const got=l.achievements.includes(a.id);li.textContent=(got?'✓ '+a.name+' · ':'· ')+a.desc;li.classList.toggle('done',got);list.append(li)}$('drawerContent').append(t,list)}if(l.log.length){const title=document.createElement('h3');title.textContent='살아온 이야기';$('drawerContent').append(title);const list=document.createElement('ul');list.className='life-log';for(const row of l.log.slice(0,12)){const li=document.createElement('li');li.textContent=row.age+'세 · '+row.text;list.append(li)}$('drawerContent').append(list)}
+ button('직업과 다음 길 보기',openCareers,$('drawerContent'));{const t=document.createElement('h3');const met=Object.keys(l.friends);t.textContent='인연 '+met.length+'/'+Object.keys(FRIENDS).length+(l.friendTurn===l.turns?' · 올해는 이미 함께했어':' · 한 해에 한 명과 시간 보내기');const list=document.createElement('div');list.className='life-friends';for(const k of met){const f=FRIENDS[k],b=button(f.icon+' '+f.name+' · 친밀도 '+l.friends[k]+'\n'+f.desc+(l.friends[k]>=30?' · 특별한 이야기 열림':''),()=>{if(spendTimeWith(k))openLife()},list);b.className='life-choice';b.disabled=l.friendTurn===l.turns}if(!met.length){const p=document.createElement('p');p.textContent='아직 만난 인연이 없어. 조금 더 자라면 누군가 찾아올 거야.';list.append(p)}$('drawerContent').append(t,list)}
+ {const t=document.createElement('h3');t.textContent='인생 상점 · '+state.fragments+'조각';const shop=document.createElement('div');shop.className='hobby-list';for(const[k,it]of Object.entries(LIFE_ITEMS)){const b=button(it.icon+' '+it.name+' · '+(it.stat?LIFE_STATS[it.stat]+' +'+it.amount+' · ':'이번 사건 바꾸기 · ')+it.cost+'조각',()=>{if(buyLifeItem(k))openLife()},shop);b.disabled=state.fragments<it.cost||(!!it.stat&&l.boughtTurn===l.turns)}const note=document.createElement('p');note.textContent='능력 아이템은 한 해에 하나만 쓸 수 있어.';$('drawerContent').append(t,shop,note)}
+ {const t=document.createElement('h3');t.textContent='인생 업적 '+l.achievements.length+'/'+LIFE_ACHIEVEMENTS.length;const list=document.createElement('ul');list.className='life-achievements';for(const a of LIFE_ACHIEVEMENTS){const li=document.createElement('li');const got=l.achievements.includes(a.id);li.textContent=(got?'✓ '+a.name+' · ':'· ')+a.desc;li.classList.toggle('done',got);list.append(li)}$('drawerContent').append(t,list)}if(l.log.length){const title=document.createElement('h3');title.textContent='살아온 이야기';$('drawerContent').append(title);const list=document.createElement('ul');list.className='life-log';for(const row of l.log.slice(0,12)){const li=document.createElement('li');li.textContent=row.age+'세 · '+row.text;list.append(li)}$('drawerContent').append(list)}
 }
 function openCareers(){if(busy||activity)return;open('어떤 일을 해볼까?');const p=document.createElement('p');p.textContent=lifeAge()<18?'18세부터 직업을 선택할 수 있어. 지금은 좋아하는 것과 능력을 키워보자.':'원하는 직업을 선택해. 이직하면 새 직업의 경험은 처음부터 쌓이고, 능력은 유지돼.';$('drawerContent').append(p);const grid=document.createElement('div');grid.className='career-grid';$('drawerContent').append(grid);
  for(const[k,j]of Object.entries(JOBS)){const box=document.createElement('div');box.className='career-card';const h=document.createElement('strong');h.textContent=j.icon+' '+j.name;const desc=document.createElement('p');desc.textContent=j.description;const req=document.createElement('p');req.textContent=Object.entries(j.requires).map(([s,v])=>LIFE_STATS[s]+' '+Math.round(state.life.stats[s])+'/'+v).join(' · ');const b=button(state.life.job===k?'현재 직업':jobAvailable(k)?'이 길 시작하기':'아직 준비 중',()=>{if(takeJob(k))openLife()},box);b.disabled=!jobAvailable(k)||state.life.job===k;box.prepend?.(h,desc,req);if(!box.prepend){box.append(h,desc,req)}grid.append(box)}
