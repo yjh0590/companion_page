@@ -7,7 +7,7 @@ if(els.collectionCount){
  els.closet.children=[els.closetLabel,els.collectionCount].filter(Boolean);
  Object.defineProperty(els.closet,'textContent',{get(){return this.labelText||''},set(value){for(const child of this.children){for(const key of Object.keys(els))if(els[key]===child)delete els[key]}this.children=[];this.labelText=value}});
 }
-const context=vm.createContext({document,localStorage:{getItem:k=>saved[k]||null,setItem:(k,v)=>saved[k]=v},setTimeout:(f,ms)=>{if(ms===850)timers.push(f);return 1},clearTimeout(){},setInterval(){},console,alert(){},confirm:()=>true,Blob,URL,Date,Math});vm.runInContext(fs.readFileSync('public/emotions.js','utf8'),context);vm.runInContext(fs.readFileSync('public/upgrade.js','utf8'),context);vm.runInContext(fs.readFileSync('public/dimensions.js','utf8'),context);vm.runInContext(fs.readFileSync('public/evolution.js','utf8'),context);vm.runInContext(fs.readFileSync('public/life.js','utf8'),context);vm.runInContext(fs.readFileSync('public/game.js','utf8'),context);
+const context=vm.createContext({document,localStorage:{getItem:k=>saved[k]||null,setItem:(k,v)=>saved[k]=v},setTimeout:(f,ms)=>{if(ms===850)timers.push(f);return 1},clearTimeout(){},setInterval(){},console,alert(){},confirm:()=>true,Blob,URL,Date,Math});vm.runInContext(fs.readFileSync('public/emotions.js','utf8'),context);vm.runInContext(fs.readFileSync('public/upgrade.js','utf8'),context);vm.runInContext(fs.readFileSync('public/dimensions.js','utf8'),context);vm.runInContext(fs.readFileSync('public/evolution.js','utf8'),context);vm.runInContext(fs.readFileSync('public/life.js','utf8'),context);vm.runInContext(fs.readFileSync('public/words.js','utf8'),context);vm.runInContext(fs.readFileSync('public/game.js','utf8'),context);
 
 function feed(text){els.food.value=text;els.feedForm.handlers.submit({preventDefault(){}});timers.shift()()}
 assert.equal(document.body.dataset.dimension,'blank');assert.equal(els.firstDot.style.opacity,0);assert.equal(els.body.style.opacity,0);assert(els.careDock.inert);
@@ -138,3 +138,18 @@ assert.equal(vm.runInContext('state.life.job',context),null);assert.equal(vm.run
 vm.runInContext('state.fragments=0;render()',context);const rev=vm.runInContext('state.life.eventId',context);vm.runInContext('chooseLifeEvent('+JSON.stringify(rev)+',0)',context);assert(vm.runInContext('state.fragments',context)>=7);
 vm.runInContext("state.life.home=99;state.life.dream='nope';state.life.retired={job:'x'};normalizeLife(state)",context);assert.equal(vm.runInContext('state.life.home',context),4);assert.equal(vm.runInContext('state.life.dream',context),null);assert.equal(vm.runInContext('state.life.retired',context),null);
 console.log('Verified: dreams pay once, homes cost and pay yearly, retirement pension, save sanitizing.');
+// v0.13: words become fragments, fragments can be eaten or woven; the year can be answered in words.
+assert.deepEqual(vm.runInContext("wordTokens('친구랑 같이 놀자!')",context),['친구','같이','놀자']);
+vm.runInContext("state.sleeping=false;state.words={eaten:['x'.repeat(30)],phrases:[{text:'ok',at:'bad'}]};normalizeWords(state)",context);assert.deepEqual(vm.runInContext('JSON.stringify(state.words)',context),'{"eaten":[],"phrases":[]}');
+feed('친구랑 같이 놀자 바다');assert(vm.runInContext("wordChips().some(c=>c.text==='친구')",context));
+assert(vm.runInContext("eatWord('친구')",context));assert.equal(vm.runInContext("eatWord('친구')",context),false);
+assert(vm.runInContext("weaveWords('같이','놀자')",context));assert(vm.runInContext("wordChips()[0].kind==='phrase'&&wordChips()[0].text==='같이 놀자'",context));
+assert.equal(vm.runInContext("wordChips().some(c=>c.text==='같이')",context),false);
+assert(vm.runInContext("eatWord('같이 놀자')",context));assert(vm.runInContext("state.words.phrases[0].eaten",context));assert.equal(vm.runInContext("eatWord('같이 놀자')",context),false);
+assert.equal(vm.runInContext("answerChoiceIndex(LIFE_EVENTS.find(e=>e.id==='firstFriend'),'왜 그런지 천천히 관찰해볼래')",context),2);
+assert.equal(vm.runInContext("answerChoiceIndex(LIFE_EVENTS.find(e=>e.id==='firstFriend'),'먼저 다가가서 인사할래')",context),0);
+const ansEvent=vm.runInContext('state.life.eventId',context),turnsBefore=vm.runInContext('state.life.turns',context);
+assert(vm.runInContext("answerLifeEvent('같이 노래 만들자')",context)>=0);assert.equal(vm.runInContext('state.life.turns',context),turnsBefore+1);
+assert(vm.runInContext("state.life.log.some(r=>r.text.startsWith('「같이 노래 만들자」'))&&state.history[0].text==='같이 노래 만들자'",context));
+assert.equal(vm.runInContext("answerLifeEvent('   ')",context),-1);assert.notEqual(ansEvent,null);
+console.log('Verified: word fragments eat once, weaving, phrase book, answering the year in words.');
