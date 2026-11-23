@@ -4,6 +4,8 @@ const TYPES={warm:{label:'다정함',color:'#ffe5cf',icon:'♡',name:'마음이 
 function fresh(){return {version:1,name:'이름 없는 페이지',born:Date.now(),last:Date.now(),xp:0,hunger:65,joy:60,energy:80,counts:Object.fromEntries(Object.keys(TYPES).map(k=>[k,0])),history:[],unlocked:[],wear:[],sleeping:false,plays:0}}
 let state=fresh(),busy=false,game=null,lastCare=0,combo=0,comboAt=0;
 const FEED_DELAY=350;
+// Growth points per new word. Stage thresholds stay in points, so this one knob sets the pace (2 = twice as fast).
+const GROWTH_PER_WORD=2,GROWTH_STEPS=[1,3,6,9,11,12,14,24];
 function valid(s){return s&&s.version===1&&typeof s.name==='string'&&s.name.length<=24&&Number.isFinite(s.xp)&&s.xp>=0&&s.xp<100000&&['born','last','hunger','joy','energy','plays'].every(k=>Number.isFinite(s[k]))&&s.counts&&Object.keys(TYPES).every(k=>Number.isFinite(s.counts[k])&&s.counts[k]>=0)&&Array.isArray(s.unlocked)&&s.unlocked.every(k=>k in TYPES)&&Array.isArray(s.wear)&&s.wear.every(k=>s.unlocked.includes(k))&&Array.isArray(s.history)&&s.history.length<=30&&s.history.every(h=>typeof h.text==='string'&&h.text.length<=160&&Number.isFinite(h.at)&& (h.type==='plain'||h.type in TYPES))&&typeof s.sleeping==='boolean'}
 try{const saved=JSON.parse(localStorage.getItem(KEY));if(valid(saved))state=saved}catch(e){}
 const clamp=n=>Math.max(0,Math.min(100,n));
@@ -12,7 +14,7 @@ function save(){try{localStorage.setItem(KEY,JSON.stringify(state));$('saveStatu
 function speak(t){$('speech').textContent=t}
 function dominant(){return Object.keys(TYPES).sort((a,b)=>state.counts[b]-state.counts[a])[0]}
 function render(){tick();normalizeLife(state);checkLifeAchievements();const lv=1+Math.floor(state.xp/3),type=dominant(),grown=state.xp>0;
-$('nameLabel').textContent=state.name;$('level').textContent='Lv. '+lv;$('stage').textContent=lv<2?'갓 태어남':lv<4?'말랑한 어린 페이지':lv<7?'취향이 생긴 페이지':'나만의 반려 페이지';$('growthBar').style.width=(state.xp%3)/3*100+'%';$('growthText').textContent='다음 성장까지 '+(3-state.xp%3)+'번의 새로운 말';
+$('nameLabel').textContent=state.name;$('level').textContent='Lv. '+lv;$('stage').textContent=lv<2?'갓 태어남':lv<4?'말랑한 어린 페이지':lv<7?'취향이 생긴 페이지':'나만의 반려 페이지';$('growthBar').style.width=(state.xp%3)/3*100+'%';$('growthText').textContent='다음 성장까지 새로운 말 '+Math.ceil((3-state.xp%3)/GROWTH_PER_WORD)+'개';
 for(const k of ['hunger','joy','energy']){$(k).value=state[k];$(k+'Text').textContent=Math.round(state[k])+' / 100'}
 $('days').textContent='함께한 '+(1+Math.max(0,Math.floor((Date.now()-state.born)/86400000)))+'일';$('body').style.fill=grown&&state.counts[type]?TYPES[type].color:'#fff';$('habitat').style.background=grown&&state.counts[type]?TYPES[type].color+'88':'#eceee3';
 $('eyes').innerHTML=state.sleeping?'<path d="M125 133Q147 151 169 133M321 133Q343 151 365 133"/>':!grown?'<path d="M128 103L164 151M164 103L128 151M325 103L361 151M361 103L325 151"/>':state.wear.includes('calm')?'<path d="M127 130Q147 113 167 130M323 130Q343 113 363 130"/>':state.wear.includes('dream')?'<path d="M148 105L155 120L173 125L155 131L148 148L141 131L124 125L141 120ZM345 105L352 120L370 125L352 131L345 148L338 131L321 125L338 120Z"/>':'<ellipse cx="148" cy="128" rx="10" ry="18" fill="#252820"/><ellipse cx="345" cy="128" rx="10" ry="18" fill="#252820"/>';
@@ -62,10 +64,11 @@ $('feedForm').addEventListener('submit',e=>{
    if(!repeat)state.feelings[emotion]++;
    state.hunger=clamp(state.hunger+15);state.joy=clamp(state.joy+5);
    if(!repeat){combo=Date.now()-comboAt<10000?combo+1:1;comboAt=Date.now();if(combo>=3)state.fragments=(state.fragments||0)+1}
-   if(!repeat){state.xp++;rememberFood(text);nourishLife(type,emotion);if(type!=='plain'){state.counts[type]++;if(!state.unlocked.includes(type)){state.unlocked.push(type);state.wear.push(type)}}}
+   const prevXp=state.xp;
+   if(!repeat){state.xp+=GROWTH_PER_WORD;rememberFood(text);nourishLife(type,emotion);if(type!=='plain'){state.counts[type]++;if(!state.unlocked.includes(type)){state.unlocked.push(type);state.wear.push(type)}}}
    state.history.unshift({text,type,emotion,mix:context.mix,situation:context.situation,grew:!repeat,at:Date.now()});state.history=state.history.slice(0,30);
    render();burst(EMOTIONS[emotion].icon);{const got=state.fragments-(before.fragments||0);showGain(repeat?'익숙한 맛':'+1 새 말'+(got>0?' · +'+got+' 조각':'')+(combo>=3?' · 연속 ×'+combo:''))}
-   speak(contextualReply()+(repeat?' 익숙한 맛이네.':[1,3,6,9,11,12,14,24].includes(state.xp)?' '+growthSpeech(type):''));
+   speak(contextualReply()+(repeat?' 익숙한 맛이네.':GROWTH_STEPS.some(n=>n>prevXp&&n<=state.xp)?' '+growthSpeech(type,GROWTH_STEPS.filter(n=>n>prevXp&&n<=state.xp).pop()):''));
   }catch(error){state=before;save();feedingError(error,text)}
   finally{busy=false;syncFeedControls()}
  },FEED_DELAY);
@@ -83,9 +86,9 @@ $('closeDialog').onclick=()=>$('drawer').close();$('closet').onclick=()=>{open('
 $('settings').onclick=()=>{open('우리의 보관함');const box=document.createElement('div');box.className='dialog-actions';$('drawerContent').append(box);const input=document.createElement('input');input.className='rename';input.value=state.name;input.maxLength=24;input.setAttribute('aria-label','페이지 이름');box.append(input);button('이름 붙여주기',()=>{state.name=input.value.trim()||'이름 없는 페이지';render();$('drawer').close();speak('내 이름은 '+state.name+'! 기억할게.')},box);button('저장 파일 내려받기',()=>{tick();const url=URL.createObjectURL(new Blob([JSON.stringify(state,null,2)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download='page-pet-save.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)},box);const file=document.createElement('input');file.type='file';file.accept='.json';file.hidden=true;box.append(file);button('저장 파일 불러오기',()=>file.click(),box);file.onchange=async()=>{try{if(file.files[0].size>5000000)throw Error();const s=JSON.parse(await file.files[0].text());if(!valid(s))throw Error();if(!confirm('현재 페이지 대신 저장 파일의 페이지를 불러올까?'))return;if(activity)stopActivity();backupBeforeChange();state=s;editing=false;render();$('drawer').close();speak('다시 만났네. 이어서 함께하자.')}catch(e){alert('이 게임의 올바른 저장 파일인지 확인해줘.')}};button('이전 버전에서 키운 기록 가져오기',()=>{try{const old=JSON.parse(localStorage.getItem('page-pet-v1'));if(!valid(old)){alert('이 브라우저에 이전 버전 기록이 없어.');return}if(!confirm('빈 화면 버전의 현재 기록 대신 이전 성장 기록을 가져올까?'))return;if(activity)stopActivity();backupBeforeChange();state=old;editing=false;render();$('drawer').close();speak('함께한 말들이 이 화면에 다시 피어났어.')}catch(e){alert('이전 기록을 불러올 수 없어.')}},box);button('불러오기·초기화 전 기록 복구',()=>{try{const old=JSON.parse(localStorage.getItem(KEY+'-before-import'));if(!valid(old)){alert('복구할 기록이 없어.');return}if(!confirm('현재 기록을 이전 기록과 바꿀까?'))return;if(activity)stopActivity();backupBeforeChange();state=old;editing=false;render();$('drawer').close();speak('이전의 작은 친구를 다시 만났어.')}catch(e){alert('복구할 기록을 읽지 못했어.')}},box);const p=document.createElement('p');p.textContent='감정과 풍경은 단어 규칙으로 반응해. 부정 표현이나 섞인 감정은 잘못 읽을 수 있어. 현재는 이 브라우저에 저장돼. 브라우저 데이터를 지우기 전 저장 파일을 보관해줘. 계정과 기기 간 이어하기는 다음 버전에서 연결할 예정이야. 말의 맛은 단어 규칙으로 분류하며, 대화 내용을 서버에 보내지 않아.';box.append(p);button('새 페이지로 다시 시작',()=>{if(confirm('지금 키운 페이지를 지우고 처음부터 시작할까? 저장 파일을 먼저 내려받을 수 있어.')){if(activity)stopActivity();backupBeforeChange();state=fresh();editing=false;render();$('drawer').close();speak('여기에 말을 놓아줘.')}},box)};
 render();if(!state.history.length)speak('여기에 말을 놓아줘.');if(state.history.length)speak(state.sleeping?'잠깐 쉬고 있어. 다시 와줘서 고마워.':'다시 왔구나! 오늘은 무슨 말을 먹을까?');setInterval(()=>{if(!busy)render()},60000);
 
-function growthSpeech(type){
+function growthSpeech(type,step=state.xp){
 const steps={1:'아무것도 없던 곳에 작은 점이 생겼어.',3:'그 점이 길어져 선이 됐어.',6:'선이 구부러져 윤곽을 만들기 시작했어.',9:'선이 닫혔어. 안쪽에 처음으로 색이 차오르고 있어.',11:'같은 면 위에 눈이 생겼어.',12:'입이 생겼어. 말마다 다른 표정을 지을 수 있어.',14:'이제 하나의 살아 있는 페이지가 됐어. 놀이와 꾸미기가 열렸어.',24:'처음의 면이 두께를 얻었어. 끌어서 여러 방향으로 돌려봐.'};
-return steps[state.xp]||(TYPES[type]?TYPES[type].desc:'네 이야기가 이 화면의 한 조각이 됐어.');
+return steps[step]||(TYPES[type]?TYPES[type].desc:'네 이야기가 이 화면의 한 조각이 됐어.');
 }
 function renderPage(){
 const xp=state.xp,t=TYPES[dominant()],show=(id,on)=>{const el=$(id);el.classList.toggle('visible',on);el.inert=!on};

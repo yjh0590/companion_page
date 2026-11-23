@@ -9,7 +9,7 @@ let activity=null,editing=false,dragging=false,toastTimer=null,upgradeInitialize
 function normalizeUpgrade(s){
  if(!Number.isFinite(s.fragments)||s.fragments<0)s.fragments=0;
  if(!Number.isFinite(s.rewardedXp)||s.rewardedXp<0)s.rewardedXp=0;
- if(s.xp>s.rewardedXp){s.fragments+=Math.min(1000,(s.xp-s.rewardedXp)*2);s.rewardedXp=s.xp}
+ if(s.xp>s.rewardedXp){s.fragments+=Math.min(1000,Math.round((s.xp-s.rewardedXp)*2/GROWTH_PER_WORD));s.rewardedXp=s.xp}
  if(!Array.isArray(s.placements))s.placements=[];
  s.placements=s.placements.filter(p=>p&&Object.hasOwn(ORNAMENTS,p.kind)&&Number.isInteger(p.id)&&p.id>=0&&Number.isFinite(p.x)&&Number.isFinite(p.y)).slice(0,12).map(p=>({...p,x:Math.max(4,Math.min(96,p.x)),y:Math.max(15,Math.min(75,p.y))}));
  if(!Number.isInteger(s.nextPlacement)||s.nextPlacement<0)s.nextPlacement=0;

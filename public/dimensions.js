@@ -47,7 +47,7 @@ function renderDimension(){
  if(xp<14){$('world').replaceChildren();$('situationScene').replaceChildren();$('placedOrnaments').hidden=true;$('statePanel').hidden=true}else $('placedOrnaments').hidden=false;
  $('feeling').style.opacity=xp>0?1:0;
  const next=DIMENSION_STAGES.find(s=>s.at>xp);
- $('growthText').textContent=next?'다음 형태까지 새로운 말 '+(next.at-xp)+'개':'내 말에 따라 계속 개성이 쌓이는 중';
+ $('growthText').textContent=next?'다음 형태까지 새로운 말 '+Math.ceil((next.at-xp)/GROWTH_PER_WORD)+'개':'내 말에 따라 계속 개성이 쌓이는 중';
  const start=stage.at,end=next?.at||xp+1;$('growthBar').style.width=next?(xp-start)/(end-start)*100+'%':'100%';
  $('level').textContent=stage.id==='volume'?'3D':stage.id==='plane'||stage.id==='life'?'2D':stage.id==='point'?'0D':stage.id==='blank'?'—':'1D';
  $('feedNote').textContent=stage.id==='blank'?'네가 건넨 말이 이 화면의 첫 조각이 돼.':stage.id==='point'?'작은 점도 네 손길에 반응해. 서로 다른 말이 모이면 길어져.':stage.id==='line'||stage.id==='outline'?'선을 살짝 끌어봐. 같은 흔적이 구부러져 윤곽을 만들고 있어.':stage.id==='plane'?'선 안에 색이 차오르는 중. 이 면이 곧 표정을 얻게 돼.':stage.id==='life'?'면을 살짝 만져봐. 말과 손길이 나만의 형태를 만들고 있어.':'끌어서 앞·옆·뒤를 돌려봐. 처음의 면이 두께를 얻었어.';

@@ -11,15 +11,16 @@ const context=vm.createContext({document,localStorage:{getItem:k=>saved[k]||null
 
 function feed(text){els.food.value=text;els.feedForm.handlers.submit({preventDefault(){}});timers.shift()()}
 assert.equal(document.body.dataset.dimension,'blank');assert.equal(els.firstDot.style.opacity,0);assert.equal(els.body.style.opacity,0);assert(els.careDock.inert);
-const expected={1:'point',2:'point',3:'line',5:'line',6:'outline',8:'outline',9:'plane',13:'plane',14:'life',23:'life',24:'volume'};
-for(let i=1;i<=24;i++){feed('새로운 이야기 '+i);if(expected[i])assert.equal(document.body.dataset.dimension,expected[i]);assert(!els.firstLine.d.includes('NaN'));if(i<9){assert.equal(els.body.style.opacity,0);assert.equal(els.eyes.style.opacity,0)}if(i===9){assert.equal(els.body.style.opacity,1);assert.equal(els.body.style.fillOpacity,.2)}if(i===11)assert.equal(els.eyes.style.opacity,1);if(i===12)assert.equal(els.mouth.style.opacity,1);if(i<14)assert(els.careDock.inert);if(i===14)assert(!els.careDock.inert)}
+// Each new word gives GROWTH_PER_WORD (2) growth points; stage thresholds are in points.
+const expected={2:'point',4:'line',6:'outline',8:'outline',10:'plane',12:'plane',14:'life',22:'life',24:'volume'};
+for(let i=1;i<=12;i++){feed('새로운 이야기 '+i);const x=2*i;assert.equal(vm.runInContext('state.xp',context),x);if(expected[x])assert.equal(document.body.dataset.dimension,expected[x]);assert(!els.firstLine.d.includes('NaN'));if(x<9){assert.equal(els.body.style.opacity,0);assert.equal(els.eyes.style.opacity,0)}if(x===10){assert.equal(els.body.style.opacity,1);assert.equal(els.body.style.fillOpacity,.4)}if(x===12){assert.equal(els.eyes.style.opacity,1);assert.equal(els.mouth.style.opacity,1)}if(x<14)assert(els.careDock.inert);if(x===14)assert(!els.careDock.inert)}
 assert.equal(els.volumeMesh.children.length,16);assert.equal(els.body.style.opacity,0);assert.match(els.dimensionFrame.transform,/matrix/);for(const face of els.volumeMesh.children)assert(!face.d.includes('NaN'));
 const before=els.volumeMesh.children[0].d;els.pet.handlers.keydown({key:'ArrowRight',preventDefault(){}});assert.notEqual(els.volumeMesh.children[0].d,before);assert(Number.isFinite(JSON.parse(saved['page-pet-blank-v2']).viewRotation.yaw));
 vm.runInContext('rotation.yaw=Math.PI;renderVolume()',context);assert.equal(els.dimensionFrame.style.opacity,0);vm.runInContext('rotation.yaw=0;renderVolume()',context);assert.equal(els.dimensionFrame.style.opacity,1);
 // Dragging the same plane into 3D persists its viewing angle.
 els.pet.handlers.pointerdown({button:0,clientX:200,clientY:170,pointerId:1});els.pet.handlers.pointermove({clientX:245,clientY:190,pointerId:1});els.pet.handlers.pointerup({pointerId:1});assert.equal(vm.runInContext('dimensionPointer',context),null);assert(Number.isFinite(JSON.parse(saved['page-pet-blank-v2']).viewRotation.pitch));
 // Repeated food changes emotion but not form growth.
-const xp=JSON.parse(saved['page-pet-blank-v2']).xp;feed('새로운 이야기 24');assert.equal(JSON.parse(saved['page-pet-blank-v2']).xp,xp);
+const xp=JSON.parse(saved['page-pet-blank-v2']).xp;feed('새로운 이야기 12');assert.equal(JSON.parse(saved['page-pet-blank-v2']).xp,xp);
 // An older record gets its corresponding shape without losing XP.
 const old=JSON.parse(saved['page-pet-blank-v2']);old.xp=12;delete old.viewRotation;vm.runInContext('state='+JSON.stringify(old)+';render()',context);assert.equal(document.body.dataset.dimension,'plane');assert.equal(JSON.parse(saved['page-pet-blank-v2']).xp,12);assert(els.careDock.inert);
 // Gameplay and ornament purchases stay locked until 2D life.
@@ -53,7 +54,7 @@ console.log('Verified: reset backup and restore preserve growth and decorations.
 
 // Age advances through food and explicit annual choices, not wall-clock time.
 vm.runInContext('state=fresh();render()',context);assert.equal(els.lifeHUD.inert,true);
-for(let i=0;i<14;i++)feed('인생의 새로운 말 '+i);assert.equal(els.lifeHUD.inert,false);assert.equal(vm.runInContext('lifeAge()',context),4);
+for(let i=0;i<7;i++)feed('인생의 새로운 말 '+i);assert.equal(els.lifeHUD.inert,false);assert.equal(vm.runInContext('lifeAge()',context),4);
 const event=vm.runInContext('state.life.eventId',context),age=vm.runInContext('lifeAge()',context);assert(vm.runInContext('chooseLifeEvent('+JSON.stringify(event)+',0)',context));assert.equal(vm.runInContext('lifeAge()',context),age+1);assert.equal(vm.runInContext('chooseLifeEvent('+JSON.stringify(event)+',0)',context),false);
 assert(vm.runInContext('practiceHobby()',context));const statsAfter=JSON.parse(saved['page-pet-blank-v2']).life.stats;assert.equal(vm.runInContext('practiceHobby()',context),false);assert.deepEqual(JSON.parse(saved['page-pet-blank-v2']).life.stats,statsAfter);
 assert.equal(vm.runInContext("takeJob('artist')",context),false);
@@ -120,7 +121,7 @@ vm.runInContext('state=fresh();render()',context);for(let i=0;i<35;i++){feed('�
 // New text written while chewing must remain in the field.
 els.food.value='먼저 보낼 말';els.feedForm.handlers.submit({preventDefault(){}});els.food.value='다음에 보낼 말';timers.shift()();assert.equal(els.food.value,'다음에 보낼 말');els.feedForm.handlers.submit({preventDefault(){}});timers.shift()();assert.equal(JSON.parse(saved['page-pet-blank-v2']).history[0].text,'다음에 보낼 말');
 // Force a view failure: state rolls back, and the submit button is released.
-const oldXp=JSON.parse(saved['page-pet-blank-v2']).xp;vm.runInContext('const renderingBeforeFailure=render;render=()=>{throw Error("injected view failure")};const loggingBeforeFailure=console;console={...console,error(){}}',context);feed('오류에도 잠기지 않는 입력');assert.equal(vm.runInContext('busy',context),false);assert.equal(els.feedForm.querySelector('button').disabled,false);assert.equal(JSON.parse(saved['page-pet-blank-v2']).xp,oldXp);assert.equal(els.food.value,'오류에도 잠기지 않는 입력');vm.runInContext('render=renderingBeforeFailure;console=loggingBeforeFailure',context);feed('오류에도 잠기지 않는 입력');assert.equal(JSON.parse(saved['page-pet-blank-v2']).xp,oldXp+1);
+const oldXp=JSON.parse(saved['page-pet-blank-v2']).xp;vm.runInContext('const renderingBeforeFailure=render;render=()=>{throw Error("injected view failure")};const loggingBeforeFailure=console;console={...console,error(){}}',context);feed('오류에도 잠기지 않는 입력');assert.equal(vm.runInContext('busy',context),false);assert.equal(els.feedForm.querySelector('button').disabled,false);assert.equal(JSON.parse(saved['page-pet-blank-v2']).xp,oldXp);assert.equal(els.food.value,'오류에도 잠기지 않는 입력');vm.runInContext('render=renderingBeforeFailure;console=loggingBeforeFailure',context);feed('오류에도 잠기지 않는 입력');assert.equal(JSON.parse(saved['page-pet-blank-v2']).xp,oldXp+vm.runInContext('GROWTH_PER_WORD',context));
 // Enter during IME composition does not send an incomplete Korean word.
 els.food.handlers.compositionstart();els.food.value='한글 조합';const waiting=timers.length;els.feedForm.handlers.submit({preventDefault(){}});assert.equal(timers.length,waiting);els.food.handlers.compositionend();els.feedForm.handlers.submit({preventDefault(){}});timers.shift()();assert.equal(vm.runInContext('busy',context),false);
 console.log('Verified: DOM child preservation, 35 consecutive feeds, next draft preservation, failure rollback and unlock, Korean composition handling.');
@@ -161,3 +162,8 @@ assert.equal(vm.runInContext('combo',context),3);const comboGain=vm.runInContext
 vm.runInContext('comboAt=Date.now()-20000',context);const comboReset=vm.runInContext('state.fragments',context);feed('한참 뒤 바나나');
 assert.equal(vm.runInContext('combo',context),1);assert.equal(comboGain-(vm.runInContext('state.fragments',context)-comboReset),1);
 console.log('Verified: feeding combo bonus and reset.');
+// v0.15: two growth points per new word; crossed milestones still speak, and fragments stay at 2 per word.
+vm.runInContext('state=fresh();combo=0;comboAt=0;render()',context);feed('첫 번째 말');const f1=vm.runInContext('state.fragments',context);feed('두 번째 말');
+assert.equal(vm.runInContext('state.xp',context),4);assert.match(els.speech.textContent,/선이 됐어/);assert.equal(vm.runInContext('state.fragments',context)-f1,2);
+for(let i=3;i<=12;i++)feed('빠른 성장 '+i);assert.equal(document.body.dataset.dimension,'volume');
+console.log('Verified: 3D after 12 new words, crossed milestone speech, fragment rate per word.');
