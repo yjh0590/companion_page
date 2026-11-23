@@ -68,13 +68,30 @@ for(const [text,feeling] of [['걱정되고 불안해','anxious'],['다음이 �
 const oldLife=JSON.parse(saved['page-pet-blank-v2']);delete oldLife.life;vm.runInContext('state='+JSON.stringify(oldLife)+';render()',context);assert.equal(JSON.parse(saved['page-pet-blank-v2']).xp,oldLife.xp);assert.deepEqual(JSON.parse(saved['page-pet-blank-v2']).placements,oldLife.placements);
 for(const year of [0,6,13,18,60,120]){vm.runInContext('state.life.turns='+Math.max(0,year-Math.floor(oldLife.xp/3))+';state.life.eventId=null;render()',context);const age=vm.runInContext('lifeAge()',context),ev=vm.runInContext('LIFE_EVENTS.find(e=>e.id===state.life.eventId)',context);assert(age>=ev.min&&age<=ev.max)}
 // v0.9 content: job-only events follow the current job, ids stay unique, choices use real stats/emotions.
-assert.equal(vm.runInContext('new Set(LIFE_EVENTS.map(e=>e.id)).size===LIFE_EVENTS.length&&LIFE_EVENTS.length',context),47);
-assert(vm.runInContext("LIFE_EVENTS.every(e=>e.choices.length===3&&(!e.job||JOBS[e.job])&&(!e.situation||SITUATIONS[e.situation])&&e.choices.every(c=>EMOTIONS[c.emotion]&&Object.keys(c.effects).every(k=>LIFE_STATS[k])))",context));
+assert.equal(vm.runInContext('new Set(LIFE_EVENTS.map(e=>e.id)).size===LIFE_EVENTS.length&&LIFE_EVENTS.length',context),55);
+assert(vm.runInContext("LIFE_EVENTS.every(e=>e.choices.length>=3&&(!e.job||JOBS[e.job])&&(!e.season||SEASONS.includes(e.season))&&(!e.situation||SITUATIONS[e.situation])&&e.choices.every(c=>EMOTIONS[c.emotion]&&Object.keys(c.effects).every(k=>LIFE_STATS[k])&&Object.keys(c.need||{}).every(k=>LIFE_STATS[k])))",context));
+assert.equal(vm.runInContext("LIFE_EVENTS.filter(e=>e.choices.some(c=>c.need)).length",context),11);
+// Seasons gate seasonal events.
+for(let n=0;n<40;n++){vm.runInContext('state.life.turns='+(20+n)+';state.life.eventId=null;normalizeLife(state)',context);const e=vm.runInContext('LIFE_EVENTS.find(e=>e.id===state.life.eventId)',context);assert(!e.season||e.season===vm.runInContext('lifeSeason()',context),e.id)}
+// Special choices stay locked until the stat requirement is met.
+vm.runInContext("state.life.turns=40;state.life.job=null;state.life.eventId='reunion';state.life.stats.social=20;render()",context);
+assert.equal(vm.runInContext("chooseLifeEvent('reunion',3)",context),false);
+vm.runInContext("state.life.stats.social=60;render()",context);const sp=vm.runInContext('state.life.specialChoices',context);
+assert(vm.runInContext("chooseLifeEvent('reunion',3)",context));assert.equal(vm.runInContext('state.life.specialChoices',context),sp+1);
+assert(vm.runInContext("state.life.achievements.includes('special')",context));
+// Achievements pay once, survive reload, and old saves get them retroactively.
+const ach=vm.runInContext('state.life.achievements.length',context),frag=vm.runInContext('state.fragments',context);vm.runInContext('render();render()',context);
+assert.equal(vm.runInContext('state.life.achievements.length',context),ach);assert.equal(vm.runInContext('state.fragments',context),frag);
+const oldAch=JSON.parse(saved['page-pet-blank-v2']);delete oldAch.life.achievements;vm.runInContext('state='+JSON.stringify(oldAch)+';render()',context);
+assert(vm.runInContext("state.life.achievements.includes('adult')",context));
+vm.runInContext("state.life.achievements=['bogus','adult','adult'];normalizeLife(state)",context);assert.deepEqual(vm.runInContext('state.life.achievements',context),['adult']);
+vm.runInContext('openLife()',context);assert(els.drawerContent.children.some(c=>c.className==='life-achievements'));
+console.log('Verified: seasons, stat-gated special choices, achievements pay once and migrate.');
 assert.equal(vm.runInContext("Object.keys(JOBS).every(k=>LIFE_EVENTS.some(e=>e.job===k))",context),true);
 for(const job of ['musician','courier',null]){vm.runInContext('state.life.job='+JSON.stringify(job)+';state.life.turns=30;state.life.eventId=null;render()',context);for(let n=0;n<40;n++){const e=vm.runInContext('LIFE_EVENTS.find(e=>e.id===state.life.eventId)',context);assert(!e.job||e.job===job,e.id);vm.runInContext('state.life.turns++;state.life.eventId=null;normalizeLife(state)',context)}}
 vm.runInContext("state.life.job='courier';render()",context);assert(els.lifeAccessory.innerHTML.length>0);
 assert.equal(vm.runInContext("josa('산책','을','를')+josa('노래','을','를')+josa('음악가','이','가')+josa('이야기꾼','이','가')",context),'산책을노래를음악가가이야기꾼이');
-console.log('Verified: 47 events, job-only events, 10 jobs, 6 hobbies, Korean particles.');
+console.log('Verified: 55 events, job-only events, 10 jobs, 6 hobbies, Korean particles.');
 console.log('Verified: life age, 20 age-filtered events, yearly choices, hobby cooldown, profession prerequisites, income and promotion, 8 extra emotions, save migration.');
 
 // Life panels are usable as rendered dialogs, not only as standalone logic.

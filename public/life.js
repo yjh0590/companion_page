@@ -25,7 +25,7 @@ const JOBS={
  musician:{name:'음악가',icon:'♪',requires:{creativity:30,social:20},income:6,stat:'creativity',description:'말의 리듬을 모아 노래로 들려주는 일.'},
  courier:{name:'편지 배달부',icon:'✉',requires:{stamina:30,social:25},income:6,stat:'stamina',description:'화면과 화면 사이로 마음을 실어 나르는 일.'}
 };
-const lifeChoice=(text,effects,emotion,result)=>({text,effects,emotion,result});
+const lifeChoice=(text,effects,emotion,result,need)=>({text,effects,emotion,result,need});
 const LIFE_EVENTS=[
  {id:'firstFriend',min:0,max:5,title:'처음 만난 작은 점',text:'옆 화면의 작은 점이 너를 바라본다. 어떻게 인사할까?',choices:[lifeChoice('먼저 다가가 인사하기',{social:5},'grateful','작은 점과 처음으로 인사를 나눴다.'),lifeChoice('함께 그림을 그려보기',{creativity:5,social:2},'playful','선 하나를 같이 그리며 친해졌다.'),lifeChoice('멀리서 천천히 관찰하기',{knowledge:5},'curious','점이 움직이는 방식을 알게 됐다.')]},
  {id:'paint',min:0,max:5,title:'세 가지 색',text:'빈 면 옆에 색 조각들이 떨어졌다. 어떤 놀이를 해볼까?',choices:[lifeChoice('마음대로 섞어보기',{creativity:6},'playful','새로운 색을 직접 만들어냈다.'),lifeChoice('색의 이름을 알아보기',{knowledge:5},'curious','각 색에 작은 이름을 붙였다.'),lifeChoice('친구에게 하나 나눠주기',{social:5},'grateful','색을 나누자 옆 화면도 밝아졌다.')]},
@@ -79,6 +79,51 @@ LIFE_EVENTS.push(
  lifeEvent('musicianConcert',18,120,'첫 연주회','객석이 가득 찬 무대 뒤에서 차례를 기다린다.',[lifeChoice('연습한 그대로 연주하기',{knowledge:4,stamina:3},'proud','한 음도 놓치지 않고 끝냈다.'),lifeChoice('그날 기분대로 바꿔 부르기',{creativity:7},'lively','처음 듣는 노래에 관객이 일어섰다.'),lifeChoice('관객과 함께 부르기',{social:6},'grateful','무대와 객석이 한 목소리가 됐다.')],{job:'musician',situation:'success'}),
  lifeEvent('courierLost',18,120,'주소 없는 편지','받는 이의 주소가 지워진 편지가 가방에 있다.',[lifeChoice('글씨체로 주인 찾기',{knowledge:6},'curious','편지 끝 서명에서 단서를 찾았다.'),lifeChoice('마을을 돌며 물어보기',{stamina:5,social:2},'hopeful','발품 끝에 편지가 주인을 만났다.'),lifeChoice('보낸 이에게 돌려주기',{social:5},'awkward','멋쩍었지만 다시 보낼 기회를 만들었다.')],{job:'courier'})
 );
+// v0.10: seasons, stat-gated special choices, life achievements.
+const SEASONS=['봄','여름','가을','겨울'];
+function lifeSeason(s=state){return SEASONS[(s.life?.turns||0)%4]}
+LIFE_EVENTS.push(
+ lifeEvent('blossom',0,120,'꽃잎 날리는 날','화면 위로 연분홍 꽃잎이 떨어진다.',[lifeChoice('꽃잎을 모아 장식하기',{creativity:5},'playful','꽃잎으로 작은 화관을 만들었다.'),lifeChoice('꽃길 따라 걷기',{stamina:5},'calm','바람을 따라 천천히 걸었다.'),lifeChoice('꽃 이름 알아보기',{knowledge:5},'curious','같은 분홍에도 여러 이름이 있었다.')],{season:'봄',situation:'beginning'}),
+ lifeEvent('springCleaning',0,120,'봄맞이 정리','겨울 동안 쌓인 조각들을 정리할 때가 됐다.',[lifeChoice('필요 없는 것 나누기',{social:5},'grateful','내게 남던 조각이 누군가에게 꼭 필요했다.'),lifeChoice('색깔별로 정리하기',{knowledge:4,creativity:2},'proud','방이 한결 넓어 보였다.'),lifeChoice('정리하다 옛 추억 꺼내 보기',{creativity:3},'lonely','잊고 있던 그림 한 장이 나왔다.')],{season:'봄'}),
+ lifeEvent('summerSea',0,120,'바다 화면','화면 끝이 파랗게 출렁인다. 바다가 열렸다.',[lifeChoice('파도에 뛰어들기',{stamina:7},'lively','물보라 속에서 실컷 웃었다.'),lifeChoice('모래성 쌓기',{creativity:6},'playful','파도가 닿기 전까지 성을 지켜냈다.'),lifeChoice('조개 껍데기 모으기',{knowledge:4,social:2},'curious','무늬가 다른 조개를 친구와 나눠 가졌다.')],{season:'여름',situation:'rest'}),
+ lifeEvent('firefly',0,120,'반딧불 밤','어두운 화면에 작은 빛들이 떠다닌다.',[lifeChoice('빛을 따라가 보기',{stamina:4,knowledge:2},'curious','빛이 모이는 숲을 찾았다.'),lifeChoice('빛으로 글자 쓰기',{creativity:6},'playful','허공에 잠깐 내 이름이 떠올랐다.'),lifeChoice('친구와 나란히 앉아 보기',{social:5},'calm','아무 말 없이도 좋은 밤이었다.')],{season:'여름'}),
+ lifeEvent('harvest',0,120,'말 열매 수확','지난 계절에 심은 말이 열매로 맺혔다.',[lifeChoice('부지런히 거두기',{stamina:6},'proud','바구니가 금세 가득 찼다.'),lifeChoice('이웃과 나눠 먹기',{social:6},'grateful','같은 열매도 함께 먹으니 더 달았다.'),lifeChoice('씨앗을 골라 남기기',{knowledge:5},'hopeful','내년에 심을 씨앗을 챙겼다.')],{season:'가을',situation:'success'}),
+ lifeEvent('autumnLeaves',0,120,'낙엽 편지','바람에 실려 온 낙엽에 글씨가 적혀 있다.',[lifeChoice('보낸 이를 찾아가기',{social:4,stamina:2},'curious','옆 화면의 오랜 친구가 보낸 낙엽이었다.'),lifeChoice('낙엽에 답장 쓰기',{creativity:5},'lonely','바람에 답장을 실어 보냈다.'),lifeChoice('낙엽을 책갈피로 만들기',{knowledge:3,creativity:2},'calm','읽던 책에 가을 한 장이 끼워졌다.')],{season:'가을'}),
+ lifeEvent('firstSnow',0,120,'첫눈','화면이 하얗게 덮이기 시작했다.',[lifeChoice('눈사람 만들기',{creativity:4,stamina:3},'playful','나를 닮은 눈사람이 생겼다.'),lifeChoice('눈송이 모양 관찰하기',{knowledge:6},'curious','눈송이마다 모양이 달랐다.'),lifeChoice('첫눈 소식 전하기',{social:5},'lively','모두가 창밖을 내다보며 웃었다.')],{season:'겨울'}),
+ lifeEvent('yearEnd',0,120,'한 해의 끝','올해의 마지막 밤이다. 무엇을 하며 보낼까?',[lifeChoice('올해를 돌아보며 적기',{knowledge:5},'proud','한 해 동안 꽤 많이 자랐다.'),lifeChoice('내년의 소원 그리기',{creativity:5},'hopeful','작은 소원이 그림으로 남았다.'),lifeChoice('고마운 이에게 인사하기',{social:5},'grateful','올해의 고마움을 빠짐없이 전했다.')],{season:'겨울',situation:'rest'})
+);
+const SPECIAL_CHOICES={
+ school:lifeChoice('혼자 새 원리 찾아내기',{knowledge:8,creativity:3},'proud','선생님도 몰랐던 길의 원리를 찾아냈다.',{knowledge:40}),
+ festival:lifeChoice('축제 전체를 기획하기',{social:7,knowledge:4},'proud','내가 짠 순서대로 축제가 흘러갔다.',{social:40}),
+ future:lifeChoice('나만의 길 지도 그리기',{creativity:8,knowledge:3},'hopeful','아직 없는 길을 지도에 먼저 그려 넣었다.',{creativity:40}),
+ failedWork:lifeChoice('실패를 작품으로 바꾸기',{creativity:9},'proud','어긋난 결과가 가장 아끼는 작품이 됐다.',{creativity:45}),
+ team:lifeChoice('프로젝트를 이끌기',{social:7,knowledge:5},'proud','모두의 힘을 모아 새 공간을 완성했다.',{social:45,knowledge:30}),
+ busyYear:lifeChoice('일과 쉼의 균형 찾기',{stamina:7,knowledge:4},'calm','바빠도 지치지 않는 나만의 박자를 찾았다.',{stamina:45}),
+ reunion:lifeChoice('옛 친구들을 모두 모으기',{social:9},'grateful','오랜만에 모든 얼굴이 한자리에 모였다.',{social:50}),
+ rain:lifeChoice('빗소리로 노래 만들기',{creativity:7,social:2},'playful','빗방울 박자에 맞춘 노래가 퍼졌다.',{creativity:35}),
+ lostPiece:lifeChoice('조각의 고향 지도 만들기',{knowledge:7,social:3},'proud','길 잃은 조각들이 더는 헤매지 않게 됐다.',{knowledge:40}),
+ teach:lifeChoice('작은 배움터 열기',{social:7,knowledge:5},'grateful','어린 페이지들이 매일 찾아오는 곳이 생겼다.',{knowledge:50,social:40}),
+ travel:lifeChoice('여행기를 책으로 내기',{creativity:6,knowledge:5},'proud','내가 본 풍경이 다른 페이지의 여행이 됐다.',{creativity:45,knowledge:35})
+};
+for(const[id,c]of Object.entries(SPECIAL_CHOICES))LIFE_EVENTS.find(e=>e.id===id).choices.push(c);
+function meetsNeed(need){return !need||Object.entries(need).every(([k,v])=>state.life.stats[k]>=v)}
+const LIFE_ACHIEVEMENTS=[
+ {id:'firstYear',name:'첫 한 해',desc:'한 해의 선택을 처음 했다.',reward:3,test:l=>l.turns>=1},
+ {id:'adult',name:'홀로서기',desc:'18세가 됐다.',reward:5,test:(l,a)=>a>=18},
+ {id:'elder',name:'긴 이야기',desc:'60세가 됐다.',reward:8,test:(l,a)=>a>=60},
+ {id:'century',name:'백 번째 해',desc:'100세가 됐다.',reward:15,test:(l,a)=>a>=100},
+ {id:'firstJob',name:'첫 직업',desc:'처음으로 직업을 가졌다.',reward:5,test:l=>l.jobsTried.length>=1},
+ {id:'wanderer',name:'여러 갈래 길',desc:'직업 세 가지를 경험했다.',reward:8,test:l=>l.jobsTried.length>=3},
+ {id:'master',name:'거장',desc:'한 직업에서 거장이 됐다.',reward:12,test:l=>!!l.job&&l.jobXp>=25},
+ {id:'specialist',name:'한 분야의 달인',desc:'능력 하나가 80에 도달했다.',reward:8,test:l=>Object.values(l.stats).some(v=>v>=80)},
+ {id:'allRound',name:'고른 성장',desc:'네 능력이 모두 50 이상이 됐다.',reward:10,test:l=>Object.values(l.stats).every(v=>v>=50)},
+ {id:'storyCollector',name:'이야기 수집가',desc:'서로 다른 사건 20개를 겪었다.',reward:8,test:l=>l.seen.length>=20},
+ {id:'fourSeasons',name:'사계절',desc:'네 계절의 사건을 모두 겪었다.',reward:6,test:l=>new Set(LIFE_EVENTS.filter(e=>e.season&&l.seen.includes(e.id)).map(e=>e.season)).size===4},
+ {id:'hobbyist',name:'다재다능',desc:'취미 네 가지를 즐겨봤다.',reward:6,test:l=>l.hobbiesTried.length>=4},
+ {id:'special',name:'나만 할 수 있는 선택',desc:'능력이 열어준 특별한 선택을 했다.',reward:6,test:l=>l.specialChoices>=1}
+];
+// Called from render() before save, so old saves get earned achievements retroactively.
+function checkLifeAchievements(){const l=state.life,age=lifeAge();if(state.xp<14)return;for(const a of LIFE_ACHIEVEMENTS){if(l.achievements.includes(a.id)||!a.test(l,age))continue;l.achievements.push(a.id);state.fragments+=a.reward;l.log.unshift({age,text:'업적 「'+a.name+'」 · '+a.reward+'조각'});l.log=l.log.slice(0,60);notifyDiscovery('인생 업적 「'+a.name+'」 달성 · '+a.reward+'조각')}}
 function lifeAge(s=state){return Math.min(120,Math.floor(s.xp/3)+(s.life?.turns||0))}
 function lifeStage(age){return age<6?'유년기':age<13?'배움기':age<18?'탐색기':age<60?'독립기':'여유기'}
 function normalizeLife(s){
@@ -91,14 +136,18 @@ function normalizeLife(s){
  if(!Array.isArray(l.seen))l.seen=[];l.seen=[...new Set(l.seen.filter(id=>LIFE_EVENTS.some(e=>e.id===id)))];
  if(typeof l.lastEmotionFromEvent!=='boolean')l.lastEmotionFromEvent=false;
  if(!Number.isFinite(l.trainedTurn))l.trainedTurn=-1;
- const eligible=LIFE_EVENTS.filter(e=>lifeAge(s)>=e.min&&lifeAge(s)<=e.max&&(!e.job||e.job===l.job));
+ if(!Array.isArray(l.achievements))l.achievements=[];l.achievements=[...new Set(l.achievements.filter(id=>LIFE_ACHIEVEMENTS.some(a=>a.id===id)))];
+ if(!Array.isArray(l.jobsTried))l.jobsTried=[];l.jobsTried=[...new Set(l.jobsTried.filter(k=>Object.hasOwn(JOBS,k)))];if(l.job&&!l.jobsTried.includes(l.job))l.jobsTried.push(l.job);
+ if(!Array.isArray(l.hobbiesTried))l.hobbiesTried=[];l.hobbiesTried=[...new Set(l.hobbiesTried.filter(k=>Object.hasOwn(HOBBIES,k)))];
+ if(!Number.isInteger(l.specialChoices)||l.specialChoices<0)l.specialChoices=0;
+ const eligible=LIFE_EVENTS.filter(e=>lifeAge(s)>=e.min&&lifeAge(s)<=e.max&&(!e.job||e.job===l.job)&&(!e.season||e.season===lifeSeason(s)));
  if(!eligible.some(e=>e.id===l.eventId)){const fresh=eligible.filter(e=>!l.seen.includes(e.id));const pool=fresh.length?fresh:eligible;l.eventId=pool[l.turns%pool.length].id}
 }
 function jobLevel(){return state.life.jobXp>=25?'거장':state.life.jobXp>=12?'전문':state.life.jobXp>=5?'숙련':'신입'}
 function lifeOccupation(){const l=state.life;return l.job?jobLevel()+' '+JOBS[l.job].name:lifeAge()<6?'작은 탐험가':lifeAge()<18?'페이지 학생':'자유로운 페이지'}
 function renderLife(){normalizeLife(state);const age=lifeAge(),l=state.life;const show=state.xp>=14;
  $('lifeHUD').classList.toggle('visible',show);$('lifeHUD').inert=!show;
- $('lifeAge').textContent=age+'세'+(age===120?'+':'');$('lifePeriod').textContent=lifeStage(age);$('lifeJob').textContent=lifeOccupation();
+ $('lifeAge').textContent=age+'세'+(age===120?'+':'');$('lifePeriod').textContent=lifeStage(age)+' · '+lifeSeason();$('lifeJob').textContent=lifeOccupation();
  $('lifeHobby').textContent=HOBBIES[l.hobby].icon+' '+HOBBIES[l.hobby].label;
  $('lifeButton').textContent='내 인생 · '+age+'세';
  $('lifeEventTitle').textContent=LIFE_EVENTS.find(e=>e.id===l.eventId).title;
@@ -109,7 +158,7 @@ function renderLife(){normalizeLife(state);const age=lifeAge(),l=state.life;cons
 }
 const josa=(w,a,b)=>{const c=w.charCodeAt(w.length-1)-44032;return w+(c>=0&&c<11172&&c%28?a:b)};
 function skillTags(effects){return Object.entries(effects).map(([k,v])=>LIFE_STATS[k]+' +'+v).join(' · ')}
-function chooseLifeEvent(id,index){if(busy||activity||state.xp<14)return false;normalizeLife(state);const l=state.life;if(l.eventId!==id)return false;const e=LIFE_EVENTS.find(e=>e.id===id),c=e?.choices[index];if(!c)return false;
+function chooseLifeEvent(id,index){if(busy||activity||state.xp<14)return false;normalizeLife(state);const l=state.life;if(l.eventId!==id)return false;const e=LIFE_EVENTS.find(e=>e.id===id),c=e?.choices[index];if(!c||!meetsNeed(c.need))return false;if(c.need)l.specialChoices++;
  const age=lifeAge();for(const[k,v]of Object.entries(c.effects))l.stats[k]=clampRange(l.stats[k]+v,0,100);
  l.stats[HOBBIES[l.hobby].stat]=clampRange(l.stats[HOBBIES[l.hobby].stat]+1,0,100);
  let reward=2;if(l.job){l.jobYears++;l.jobXp++;reward=JOBS[l.job].income+(l.jobXp>=12?2:l.jobXp>=5?1:0);l.stats[JOBS[l.job].stat]=clampRange(l.stats[JOBS[l.job].stat]+1,0,100)}
@@ -118,13 +167,13 @@ function chooseLifeEvent(id,index){if(busy||activity||state.xp<14)return false;n
  render();speak(c.result+' 한 해가 지나 '+lifeAge()+'세가 됐어.');return true;
 }
 function jobAvailable(key){normalizeLife(state);const j=JOBS[key];return !!j&&lifeAge()>=18&&Object.entries(j.requires).every(([k,v])=>state.life.stats[k]>=v)}
-function takeJob(key){if(busy||activity||!jobAvailable(key))return false;const l=state.life;if(l.job===key)return false;l.job=key;l.jobYears=0;l.jobXp=0;l.log.unshift({age:lifeAge(),text:JOBS[key].name+'의 길을 시작했다.'});l.log=l.log.slice(0,60);render();speak(josa(JOBS[key].name,'이','가')+' 됐어. 다음 한 해부터 경험과 조각이 쌓여.');return true}
-function practiceHobby(){normalizeLife(state);const l=state.life;if(busy||activity||state.xp<14||l.trainedTurn===l.turns)return false;l.trainedTurn=l.turns;l.stats[HOBBIES[l.hobby].stat]=clampRange(l.stats[HOBBIES[l.hobby].stat]+3,0,100);state.joy=clamp(state.joy+3);render();speak(josa(HOBBIES[l.hobby].label,'을','를')+' 즐겼어. 다음 한 해에 또 해보자.');return true}
-function openLife(){if(busy||activity||state.xp<14)return;normalizeLife(state);open('내 페이지의 인생');const l=state.life,summary=document.createElement('p');summary.textContent=lifeAge()+'세 · '+lifeStage(lifeAge())+' · '+lifeOccupation()+' · 취미 '+HOBBIES[l.hobby].label;$('drawerContent').append(summary);
+function takeJob(key){if(busy||activity||!jobAvailable(key))return false;const l=state.life;if(l.job===key)return false;l.job=key;if(!l.jobsTried.includes(key))l.jobsTried.push(key);l.jobYears=0;l.jobXp=0;l.log.unshift({age:lifeAge(),text:JOBS[key].name+'의 길을 시작했다.'});l.log=l.log.slice(0,60);render();speak(josa(JOBS[key].name,'이','가')+' 됐어. 다음 한 해부터 경험과 조각이 쌓여.');return true}
+function practiceHobby(){normalizeLife(state);const l=state.life;if(busy||activity||state.xp<14||l.trainedTurn===l.turns)return false;l.trainedTurn=l.turns;if(!l.hobbiesTried.includes(l.hobby))l.hobbiesTried.push(l.hobby);l.stats[HOBBIES[l.hobby].stat]=clampRange(l.stats[HOBBIES[l.hobby].stat]+3,0,100);state.joy=clamp(state.joy+3);render();speak(josa(HOBBIES[l.hobby].label,'을','를')+' 즐겼어. 다음 한 해에 또 해보자.');return true}
+function openLife(){if(busy||activity||state.xp<14)return;normalizeLife(state);open('내 페이지의 인생');const l=state.life,summary=document.createElement('p');summary.textContent=lifeAge()+'세 · '+lifeStage(lifeAge())+' · '+lifeSeason()+' · '+lifeOccupation()+' · 취미 '+HOBBIES[l.hobby].label;$('drawerContent').append(summary);
  const note=document.createElement('p');note.textContent='새로운 말 3개 또는 아래의 한 해 선택 1번마다 1살 자라. 접속하지 않는 동안 나이는 늘지 않아.';$('drawerContent').append(note);const skills=document.createElement('div');skills.className='life-quick-stats';for(const[k,label]of Object.entries(LIFE_STATS)){const badge=document.createElement('span');badge.textContent=label+' '+Math.round(l.stats[k])+'/100';skills.append(badge)}$('drawerContent').append(skills);
- const e=LIFE_EVENTS.find(e=>e.id===l.eventId),card=document.createElement('section');card.className='life-event';const h=document.createElement('h3');h.textContent=e.title;const p=document.createElement('p');p.textContent=e.text;card.append(h,p);for(let i=0;i<e.choices.length;i++){const c=e.choices[i],b=button(c.text+'\n'+skillTags(c.effects),()=>{if(chooseLifeEvent(e.id,i))openLife()},card);b.className='life-choice'}$('drawerContent').append(card);
+ const e=LIFE_EVENTS.find(e=>e.id===l.eventId),card=document.createElement('section');card.className='life-event';const h=document.createElement('h3');h.textContent=e.title;const p=document.createElement('p');p.textContent=e.text;card.append(h,p);for(let i=0;i<e.choices.length;i++){const c=e.choices[i],b=button((c.need?'★ ':'')+c.text+'\n'+skillTags(c.effects)+(c.need?' · 조건 '+Object.entries(c.need).map(([k,v])=>LIFE_STATS[k]+' '+v).join(' · '):''),()=>{if(chooseLifeEvent(e.id,i))openLife()},card);b.className='life-choice'+(c.need?' special':'');b.disabled=!meetsNeed(c.need)}$('drawerContent').append(card);
  const hobbies=document.createElement('div');hobbies.className='hobby-list';$('drawerContent').append(hobbies);for(const[k,v]of Object.entries(HOBBIES)){const b=button(v.icon+' '+v.label,()=>{l.hobby=k;render();openLife()},hobbies);b.classList.toggle('active',l.hobby===k)}const practice=button(l.trainedTurn===l.turns?'올해의 취미 활동 완료':'취미 즐기기 · '+LIFE_STATS[HOBBIES[l.hobby].stat]+' +3',()=>{if(practiceHobby())openLife()},$('drawerContent'));practice.disabled=l.trainedTurn===l.turns;
- button('직업과 다음 길 보기',openCareers,$('drawerContent'));if(l.log.length){const title=document.createElement('h3');title.textContent='살아온 이야기';$('drawerContent').append(title);const list=document.createElement('ul');list.className='life-log';for(const row of l.log.slice(0,12)){const li=document.createElement('li');li.textContent=row.age+'세 · '+row.text;list.append(li)}$('drawerContent').append(list)}
+ button('직업과 다음 길 보기',openCareers,$('drawerContent'));{const t=document.createElement('h3');t.textContent='인생 업적 '+l.achievements.length+'/'+LIFE_ACHIEVEMENTS.length;const list=document.createElement('ul');list.className='life-achievements';for(const a of LIFE_ACHIEVEMENTS){const li=document.createElement('li');const got=l.achievements.includes(a.id);li.textContent=(got?'✓ '+a.name+' · ':'· ')+a.desc;li.classList.toggle('done',got);list.append(li)}$('drawerContent').append(t,list)}if(l.log.length){const title=document.createElement('h3');title.textContent='살아온 이야기';$('drawerContent').append(title);const list=document.createElement('ul');list.className='life-log';for(const row of l.log.slice(0,12)){const li=document.createElement('li');li.textContent=row.age+'세 · '+row.text;list.append(li)}$('drawerContent').append(list)}
 }
 function openCareers(){if(busy||activity)return;open('어떤 일을 해볼까?');const p=document.createElement('p');p.textContent=lifeAge()<18?'18세부터 직업을 선택할 수 있어. 지금은 좋아하는 것과 능력을 키워보자.':'원하는 직업을 선택해. 이직하면 새 직업의 경험은 처음부터 쌓이고, 능력은 유지돼.';$('drawerContent').append(p);const grid=document.createElement('div');grid.className='career-grid';$('drawerContent').append(grid);
  for(const[k,j]of Object.entries(JOBS)){const box=document.createElement('div');box.className='career-card';const h=document.createElement('strong');h.textContent=j.icon+' '+j.name;const desc=document.createElement('p');desc.textContent=j.description;const req=document.createElement('p');req.textContent=Object.entries(j.requires).map(([s,v])=>LIFE_STATS[s]+' '+Math.round(state.life.stats[s])+'/'+v).join(' · ');const b=button(state.life.job===k?'현재 직업':jobAvailable(k)?'이 길 시작하기':'아직 준비 중',()=>{if(takeJob(k))openLife()},box);b.disabled=!jobAvailable(k)||state.life.job===k;box.prepend?.(h,desc,req);if(!box.prepend){box.append(h,desc,req)}grid.append(box)}

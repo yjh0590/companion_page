@@ -10,7 +10,7 @@ function tick(){const now=Date.now(),hours=Math.max(0,Math.min(12,(now-state.las
 function save(){try{localStorage.setItem(KEY,JSON.stringify(state));$('saveStatus').textContent='이 브라우저에 자동 저장 · 계정 연결 준비 중'}catch(e){$('saveStatus').textContent='자동 저장 불가 · 보관함에서 저장 파일을 내려받아줘'}}
 function speak(t){$('speech').textContent=t}
 function dominant(){return Object.keys(TYPES).sort((a,b)=>state.counts[b]-state.counts[a])[0]}
-function render(){tick();normalizeLife(state);const lv=1+Math.floor(state.xp/3),type=dominant(),grown=state.xp>0;
+function render(){tick();normalizeLife(state);checkLifeAchievements();const lv=1+Math.floor(state.xp/3),type=dominant(),grown=state.xp>0;
 $('nameLabel').textContent=state.name;$('level').textContent='Lv. '+lv;$('stage').textContent=lv<2?'갓 태어남':lv<4?'말랑한 어린 페이지':lv<7?'취향이 생긴 페이지':'나만의 반려 페이지';$('growthBar').style.width=(state.xp%3)/3*100+'%';$('growthText').textContent='다음 성장까지 '+(3-state.xp%3)+'번의 새로운 말';
 for(const k of ['hunger','joy','energy']){$(k).value=state[k];$(k+'Text').textContent=Math.round(state[k])+' / 100'}
 $('days').textContent='함께한 '+(1+Math.max(0,Math.floor((Date.now()-state.born)/86400000)))+'일';$('body').style.fill=grown&&state.counts[type]?TYPES[type].color:'#fff';$('habitat').style.background=grown&&state.counts[type]?TYPES[type].color+'88':'#eceee3';
