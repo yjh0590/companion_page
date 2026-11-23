@@ -195,3 +195,14 @@ body[data-life="active"] .dimension-tag{display:none}
 .word-chip.edge-r{transform:translate(-100%,-50%) rotate(var(--tilt));animation:none}
 @media(max-width:900px){.care{flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;scrollbar-width:none;gap:0 14px;padding:10px 4px}.care button{flex:none}}
 @media(min-width:901px){.gain{top:-26px}}
+
+/* v0.16 · The page becomes the thing you name: an inked, washed-out drawing of it. */
+#formGlyph{font-family:'Segoe UI Emoji','Apple Color Emoji','Noto Color Emoji',sans-serif;font-size:240px;filter:url(#glyphInk);transform-box:view-box;transform-origin:250px 188px;pointer-events:none}
+#formGlyph.form-in{animation:formIn .45s cubic-bezier(.2,1.4,.4,1)}
+@keyframes formIn{from{opacity:0;transform:scale(.4) rotate(-8deg)}to{opacity:1;transform:none}}
+body.has-form #body{fill-opacity:0!important;stroke-opacity:0}
+body.has-form #eyes,body.has-form #mouth,body.has-form #cheeks,body.has-form #decor,body.has-form #emotionExtra,body.has-form #lifeAccessory,body.has-form #volumeMesh{display:none}
+.form-book{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.form-book button{border:1px solid #2f2a2440;border-radius:255px 15px 225px 15px/15px 225px 15px 255px;background:none;font-family:var(--hand);font-size:20px;padding:4px 12px;color:var(--ink)}
+.form-book .active{background:#f2dc8a88}
+@media(prefers-reduced-motion:reduce){#formGlyph.form-in{animation:none}}

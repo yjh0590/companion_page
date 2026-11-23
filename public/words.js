@@ -5,13 +5,42 @@ const FLOW_SPEED={lively:38,playful:44,angry:60,hopeful:30,curious:24,proud:18,g
 const PARTICLE=/(이에요|예요|이야|에서|으로|에게|한테|까지|부터|처럼|보다|이랑|랑|하고|은|는|이|가|을|를|에|의|도|로|와|과|요|야)$/;
 let skinOffset=0,skinCycle=0,skinSpeed=15,skinFrame=null,skinLast=0,chipDrag=null;
 const chipSpots={};
+const PARTICLES=['이에요','예요','이야','에서','으로','에게','한테','까지','부터','처럼','보다','이랑','랑','하고','이가','은','는','이','가','을','를','에','의','도','만','로','와','과','요','야','아'];
+// Every way of peeling one particle off; a dictionary word wins over a shorter stem (고양이랑 → 고양이, not 고양).
+function stems(t){return [t,...PARTICLES.filter(p=>t.length>p.length&&t.endsWith(p)).map(p=>t.slice(0,-p.length))]}
+// Shapes: a fed word that names a thing (SHAPES, from Unicode CLDR Korean) turns the page into that thing.
+// One-syllable names that are also everyday words (새 학기, 해 봐, 배 고파) count only with a particle: 새가, 해가, 배를.
+const FORM_AT=14,REVERT=/원래대로|원래 모습|돌아와/,BARE_AMBIGUOUS=new Set(['새','해','배','차','눈','말']);
+function shapeOf(text){
+ for(const t of String(text).replace(/[^\p{L}\p{N}\s]/gu,' ').split(/\s+/)){if(!t)continue;
+  for(const c of stems(t))if(Object.hasOwn(SHAPES,c)&&!(c===t&&BARE_AMBIGUOUS.has(c)))return {word:c,emoji:SHAPES[c]}}
+ return null;
+}
+// Returns the new form, 'revert', or null. Call before render().
+function takeShape(text){
+ normalizeWords(state);if(state.xp<FORM_AT)return null;
+ if(REVERT.test(text)){if(!state.words.form)return null;state.words.form=null;return 'revert'}
+ const f=shapeOf(text);if(!f)return null;
+ state.words.form={...f,at:Date.now()};
+ if(!state.words.forms.some(x=>x.word===f.word)){state.words.forms.unshift({...f,at:Date.now()});state.words.forms=state.words.forms.slice(0,300);state.fragments=(state.fragments||0)+1;notifyDiscovery('새로운 모습 · '+f.emoji+' '+f.word+' · 1조각')}
+ return f;
+}
+function shapeSpeech(f){return f==='revert'?' 원래 모습으로 돌아왔어.':f?' '+josa('「'+f.word,'」이','」가')+' 되어볼게!':''}
+function setForm(word){normalizeWords(state);if(busy||activity)return false;if(word===null){state.words.form=null}else{const f=state.words.forms.find(x=>x.word===word);if(!f)return false;state.words.form={word:f.word,emoji:f.emoji,at:Date.now()}}render();speak(shapeSpeech(word===null?'revert':state.words.form).trim());return true}
+let shownForm='';
+function renderForm(){
+ const f=state.xp>=FORM_AT?state.words.form:null,key=f?f.emoji:'';document.body.classList.toggle('has-form',!!f);
+ if(key!==shownForm){shownForm=key;const g=$('formGlyph');g.textContent=key;g.classList.remove('form-in');void g.offsetWidth;if(key)g.classList.add('form-in')}
+}
 function normalizeWords(s){
  if(!s.words||typeof s.words!=='object'||Array.isArray(s.words))s.words={};const w=s.words;
  if(!Array.isArray(w.eaten))w.eaten=[];w.eaten=[...new Set(w.eaten.filter(t=>typeof t==='string'&&t.length<=24))].slice(-500);
+ const okForm=f=>f&&typeof f.word==='string'&&f.word.length<=12&&typeof f.emoji==='string'&&f.emoji.length<=16;
+ if(!okForm(w.form))w.form=null;if(!Array.isArray(w.forms))w.forms=[];w.forms=w.forms.filter(okForm).map(f=>({word:f.word,emoji:f.emoji,at:Number.isFinite(f.at)?f.at:0})).slice(0,300);
  if(!Array.isArray(w.phrases))w.phrases=[];w.phrases=w.phrases.filter(p=>p&&typeof p.text==='string'&&p.text.length<=24&&Number.isFinite(p.at)).map(p=>({text:p.text,at:p.at,eaten:!!p.eaten})).slice(0,60);
 }
-// ponytail: suffix-strip particle heuristic (고양이 → 고양); swap for a morpheme list if scraps read oddly.
-function wordTokens(text){return String(text).replace(/[^\p{L}\p{N}\s]/gu,' ').split(/\s+/).map(t=>{const s=t.replace(PARTICLE,'');return s.length>=2?s:t}).filter(t=>t.length>=2&&t.length<=5)}
+// ponytail: suffix-strip particle heuristic; dictionary words (고양이) are kept whole. Swap for a morpheme list if scraps read oddly.
+function wordTokens(text){return String(text).replace(/[^\p{L}\p{N}\s]/gu,' ').split(/\s+/).map(t=>{const known=stems(t).find(c=>Object.hasOwn(SHAPES,c));if(known)return known;const s=t.replace(PARTICLE,'');return s.length>=2?s:t}).filter(t=>t.length>=2&&t.length<=5)}
 function wordChips(){
  const w=state.words,used=new Set(w.eaten),loose=[];
  for(const h of state.history)for(const t of wordTokens(h.text))if(!used.has(t)){used.add(t);loose.push({text:t,kind:'word'})}
@@ -25,7 +54,7 @@ function eatWord(text){
  for(let i=0;i<times;i++)nourishLife(type,felt);
  if(phrase)phrase.eaten=true;else w.eaten.push(text);
  state.joy=clamp(state.joy+3*times);state.hunger=clamp(state.hunger+3*times);if(felt!=='neutral'&&EMOTIONS[felt]){state.emotion=felt;state.mix=null}
- animate('eating');render();speak('「'+text+'」… 오물오물. '+wordFlavor(text)+(phrase?' 엮은 말이라 두 배로 든든해.':''));return true;
+ const shape=takeShape(text);animate('eating');render();speak('「'+text+'」… 오물오물. '+wordFlavor(text)+(phrase?' 엮은 말이라 두 배로 든든해.':'')+shapeSpeech(shape));return true;
 }
 function weaveWords(a,b){
  normalizeWords(state);if(busy||activity||state.xp<9||a===b)return false;const w=state.words,chips=wordChips(),ca=chips.find(c=>c.text===a),cb=chips.find(c=>c.text===b);
@@ -71,10 +100,11 @@ function renderWordField(){
   b.addEventListener('click',ev=>{if(ev.detail===0)eatWord(c.text)});
   field.append(b)});
 }
-function renderWords(){normalizeWords(state);renderWordSkin();renderWordField();$('wordBookButton').textContent='말 사전 · '+state.words.phrases.length}
+function renderWords(){normalizeWords(state);renderForm();renderWordSkin();renderWordField();$('wordBookButton').textContent='말 사전 · '+state.words.phrases.length}
 function openWordBook(){
  normalizeWords(state);open('말 사전');const w=state.words,p=document.createElement('p');p.textContent='먹인 말에서 떨어진 조각을 다른 조각 위로 끌어 엮으면 새 구절이 생겨. 조각을 누르거나 페이지에게 끌어다 주면 먹어. 지금까지 먹은 조각 '+w.eaten.length+'개.';$('drawerContent').append(p);
  const list=document.createElement('ul');list.className='word-book';for(const ph of w.phrases){const li=document.createElement('li'),s=document.createElement('small');li.textContent='「'+ph.text+'」 ';s.textContent=new Date(ph.at).toLocaleDateString('ko-KR')+(ph.eaten?' · 먹음':' · 화면에 떠 있음');li.append(s);list.append(li)}
  if(!w.phrases.length){const li=document.createElement('li');li.textContent='아직 엮은 말이 없어. 떠다니는 조각 둘을 겹쳐봐.';list.append(li)}$('drawerContent').append(list);
+ {const t=document.createElement('h3');t.textContent='변신 도감 · '+w.forms.length+' / '+Object.keys(SHAPES).length;const p=document.createElement('p');p.textContent=state.xp<FORM_AT?'살아 있는 페이지가 되면, 이름 있는 것을 말해줄 때마다 그 모습이 돼. 고양이, 기차, 해바라기처럼.':'이름 있는 것을 말해주면 그 모습이 돼. 한 번 된 모습은 여기서 다시 고를 수 있어.';const grid=document.createElement('div');grid.className='form-book';for(const f of w.forms){const b=button(f.emoji+' '+f.word,()=>{if(setForm(f.word))openWordBook()},grid);b.classList.toggle('active',w.form?.word===f.word)}$('drawerContent').append(t,p,grid);if(w.form)button('원래 모습으로 돌아가기',()=>{if(setForm(null))openWordBook()},$('drawerContent'))}
 }
 function initWords(){$('wordBookButton').onclick=openWordBook}

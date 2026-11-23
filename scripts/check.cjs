@@ -7,7 +7,7 @@ if(els.collectionCount){
  els.closet.children=[els.closetLabel,els.collectionCount].filter(Boolean);
  Object.defineProperty(els.closet,'textContent',{get(){return this.labelText||''},set(value){for(const child of this.children){for(const key of Object.keys(els))if(els[key]===child)delete els[key]}this.children=[];this.labelText=value}});
 }
-const context=vm.createContext({document,localStorage:{getItem:k=>saved[k]||null,setItem:(k,v)=>saved[k]=v},setTimeout:(f,ms)=>{if(ms===350)timers.push(f);return 1},clearTimeout(){},setInterval(){},console,alert(){},confirm:()=>true,Blob,URL,Date,Math});vm.runInContext(fs.readFileSync('public/emotions.js','utf8'),context);vm.runInContext(fs.readFileSync('public/upgrade.js','utf8'),context);vm.runInContext(fs.readFileSync('public/dimensions.js','utf8'),context);vm.runInContext(fs.readFileSync('public/evolution.js','utf8'),context);vm.runInContext(fs.readFileSync('public/life.js','utf8'),context);vm.runInContext(fs.readFileSync('public/words.js','utf8'),context);vm.runInContext(fs.readFileSync('public/game.js','utf8'),context);
+const context=vm.createContext({document,localStorage:{getItem:k=>saved[k]||null,setItem:(k,v)=>saved[k]=v},setTimeout:(f,ms)=>{if(ms===350)timers.push(f);return 1},clearTimeout(){},setInterval(){},console,alert(){},confirm:()=>true,Blob,URL,Date,Math});vm.runInContext(fs.readFileSync('public/emotions.js','utf8'),context);vm.runInContext(fs.readFileSync('public/upgrade.js','utf8'),context);vm.runInContext(fs.readFileSync('public/dimensions.js','utf8'),context);vm.runInContext(fs.readFileSync('public/evolution.js','utf8'),context);vm.runInContext(fs.readFileSync('public/life.js','utf8'),context);vm.runInContext(fs.readFileSync('public/shapes.js','utf8'),context);vm.runInContext(fs.readFileSync('public/words.js','utf8'),context);vm.runInContext(fs.readFileSync('public/game.js','utf8'),context);
 
 function feed(text){els.food.value=text;els.feedForm.handlers.submit({preventDefault(){}});timers.shift()()}
 assert.equal(document.body.dataset.dimension,'blank');assert.equal(els.firstDot.style.opacity,0);assert.equal(els.body.style.opacity,0);assert(els.careDock.inert);
@@ -141,7 +141,7 @@ vm.runInContext("state.life.home=99;state.life.dream='nope';state.life.retired={
 console.log('Verified: dreams pay once, homes cost and pay yearly, retirement pension, save sanitizing.');
 // v0.13: words become fragments, fragments can be eaten or woven; the year can be answered in words.
 assert.deepEqual(vm.runInContext("wordTokens('친구랑 같이 놀자!')",context),['친구','같이','놀자']);
-vm.runInContext("state.sleeping=false;state.words={eaten:['x'.repeat(30)],phrases:[{text:'ok',at:'bad'}]};normalizeWords(state)",context);assert.deepEqual(vm.runInContext('JSON.stringify(state.words)',context),'{"eaten":[],"phrases":[]}');
+vm.runInContext("state.sleeping=false;state.words={eaten:['x'.repeat(30)],phrases:[{text:'ok',at:'bad'}]};normalizeWords(state)",context);assert.deepEqual(vm.runInContext('JSON.stringify(state.words)',context),'{"eaten":[],"phrases":[],"form":null,"forms":[]}');
 feed('친구랑 같이 놀자 바다');assert(vm.runInContext("wordChips().some(c=>c.text==='친구')",context));
 assert(vm.runInContext("eatWord('친구')",context));assert.equal(vm.runInContext("eatWord('친구')",context),false);
 assert(vm.runInContext("weaveWords('같이','놀자')",context));assert(vm.runInContext("wordChips()[0].kind==='phrase'&&wordChips()[0].text==='같이 놀자'",context));
@@ -156,10 +156,10 @@ assert.equal(vm.runInContext("answerLifeEvent('   ')",context),-1);assert.notEqu
 console.log('Verified: word fragments eat once, weaving, phrase book, answering the year in words.');
 // v0.14: quick consecutive new words build a combo that pays a bonus fragment from the third feed.
 vm.runInContext('combo=0;comboAt=0;state.sleeping=false',context);
-for(const t of ['연속 하나 사과','연속 둘 포도']){feed(t)}
-const comboBefore=vm.runInContext('state.fragments',context);feed('연속 셋 자두');
+for(const t of ['연속 하나 가나','연속 둘 다라']){feed(t)}
+const comboBefore=vm.runInContext('state.fragments',context);feed('연속 셋 마바');
 assert.equal(vm.runInContext('combo',context),3);const comboGain=vm.runInContext('state.fragments',context)-comboBefore;
-vm.runInContext('comboAt=Date.now()-20000',context);const comboReset=vm.runInContext('state.fragments',context);feed('한참 뒤 바나나');
+vm.runInContext('comboAt=Date.now()-20000',context);const comboReset=vm.runInContext('state.fragments',context);feed('한참 뒤 사아');
 assert.equal(vm.runInContext('combo',context),1);assert.equal(comboGain-(vm.runInContext('state.fragments',context)-comboReset),1);
 console.log('Verified: feeding combo bonus and reset.');
 // v0.15: two growth points per new word; crossed milestones still speak, and fragments stay at 2 per word.
@@ -167,3 +167,21 @@ vm.runInContext('state=fresh();combo=0;comboAt=0;render()',context);feed('첫 �
 assert.equal(vm.runInContext('state.xp',context),4);assert.match(els.speech.textContent,/선이 됐어/);assert.equal(vm.runInContext('state.fragments',context)-f1,2);
 for(let i=3;i<=12;i++)feed('빠른 성장 '+i);assert.equal(document.body.dataset.dimension,'volume');
 console.log('Verified: 3D after 12 new words, crossed milestone speech, fragment rate per word.');
+// v0.16: naming a thing turns the page into it (after 2D life); particles are tolerated; '원래대로' reverts.
+assert.deepEqual(vm.runInContext("shapeOf('우리 고양이가 귀여워')",context),{word:'고양이',emoji:'🐈'});
+assert.equal(vm.runInContext("shapeOf('오늘 기분이 좋아')",context),null);
+assert.deepEqual(vm.runInContext("wordTokens('고양이랑 놀았어')",context).slice(0,1),['고양이']);
+vm.runInContext('state=fresh();combo=0;render()',context);feed('기차를 봤어');assert.equal(vm.runInContext('state.words.form',context),null);
+for(let i=0;i<7;i++)feed('자라는 말 '+i);assert(vm.runInContext('state.xp>=FORM_AT',context));
+const formFrag=vm.runInContext('state.fragments',context);feed('기차를 타고 싶어');
+assert.equal(vm.runInContext('state.words.form.emoji',context),'🚆');assert.equal(els.formGlyph.textContent,'🚆');assert.match(els.speech.textContent,/「기차」가 되어볼게/);
+assert.equal(vm.runInContext('state.words.forms.length',context),1);assert(vm.runInContext('state.fragments',context)>formFrag);
+feed('또 기차 보자');assert.equal(vm.runInContext('state.words.forms.length',context),1);
+feed('해바라기 피었네');assert.equal(vm.runInContext('state.words.form.word',context),'해바라기');
+assert(vm.runInContext("setForm('기차')",context));assert.equal(els.formGlyph.textContent,'🚆');assert.equal(vm.runInContext("setForm('없는모습')",context),false);
+feed('이제 원래대로 돌아와');assert.equal(vm.runInContext('state.words.form',context),null);assert.equal(els.formGlyph.textContent,'');
+vm.runInContext("state.words.form={word:1};state.words.forms=[{word:'x',emoji:'y'},'bad'];normalizeWords(state)",context);assert.equal(vm.runInContext('state.words.form',context),null);assert.equal(vm.runInContext('state.words.forms.length',context),1);
+console.log('Verified: words become shapes, particles tolerated, form book, revert, save sanitizing.');
+// Ambiguous one-syllable names need a particle; bare everyday uses stay put.
+for(const [t,w] of [['새 학기 시작','none'],['새가 날아','새'],['해 봐','none'],['해가 떴어','해'],['배 고파','none'],['배를 탔어','배'],['눈이 와','눈'],['차 타고 가자','none'],['차를 마셔','차']])assert.equal(vm.runInContext('shapeOf('+JSON.stringify(t)+')?.word||"none"',context),w,t);
+console.log('Verified: ambiguous one-syllable shape words.');

@@ -66,9 +66,10 @@ $('feedForm').addEventListener('submit',e=>{
    if(!repeat){combo=Date.now()-comboAt<10000?combo+1:1;comboAt=Date.now();if(combo>=3)state.fragments=(state.fragments||0)+1}
    const prevXp=state.xp;
    if(!repeat){state.xp+=GROWTH_PER_WORD;rememberFood(text);nourishLife(type,emotion);if(type!=='plain'){state.counts[type]++;if(!state.unlocked.includes(type)){state.unlocked.push(type);state.wear.push(type)}}}
+   const shape=takeShape(text);
    state.history.unshift({text,type,emotion,mix:context.mix,situation:context.situation,grew:!repeat,at:Date.now()});state.history=state.history.slice(0,30);
    render();burst(EMOTIONS[emotion].icon);{const got=state.fragments-(before.fragments||0);showGain(repeat?'익숙한 맛':'+1 새 말'+(got>0?' · +'+got+' 조각':'')+(combo>=3?' · 연속 ×'+combo:''))}
-   speak(contextualReply()+(repeat?' 익숙한 맛이네.':GROWTH_STEPS.some(n=>n>prevXp&&n<=state.xp)?' '+growthSpeech(type,GROWTH_STEPS.filter(n=>n>prevXp&&n<=state.xp).pop()):''));
+   speak(contextualReply()+shapeSpeech(shape)+(repeat?' 익숙한 맛이네.':GROWTH_STEPS.some(n=>n>prevXp&&n<=state.xp)?' '+growthSpeech(type,GROWTH_STEPS.filter(n=>n>prevXp&&n<=state.xp).pop()):''));
   }catch(error){state=before;save();feedingError(error,text)}
   finally{busy=false;syncFeedControls()}
  },FEED_DELAY);
