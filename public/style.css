@@ -206,3 +206,31 @@ body.has-form #eyes,body.has-form #mouth,body.has-form #cheeks,body.has-form #de
 .form-book button{border:1px solid #2f2a2440;border-radius:255px 15px 225px 15px/15px 225px 15px 255px;background:none;font-family:var(--hand);font-size:20px;padding:4px 12px;color:var(--ink)}
 .form-book .active{background:#f2dc8a88}
 @media(prefers-reduced-motion:reduce){#formGlyph.form-in{animation:none}}
+
+/* v0.17 · A shape moves like the thing it is. */
+#formLayer{transform-box:view-box;transform-origin:250px 188px}
+#formWear text{font-family:'Segoe UI Emoji','Apple Color Emoji','Noto Color Emoji',sans-serif;filter:url(#glyphInk)}
+body:not(.has-form) #formWear{display:none}
+body[data-form-kind="walk"] #formLayer{animation:formWalk 2.4s ease-in-out infinite}
+body[data-form-kind="fly"] #formLayer{animation:formFly 2s ease-in-out infinite}
+body[data-form-kind="swim"] #formLayer{animation:formSwim 3.2s ease-in-out infinite}
+body[data-form-kind="flutter"] #formLayer{animation:formFlutter .9s ease-in-out infinite}
+body[data-form-kind="sway"] #formLayer{transform-origin:250px 300px;animation:formSway 3s ease-in-out infinite}
+body[data-form-kind="wobble"] #formLayer{transform-origin:250px 290px;animation:formWobble 1.3s ease-in-out infinite}
+body[data-form-kind="drive"] #formLayer{animation:formDrive 3s ease-in-out infinite alternate}
+body[data-form-kind="sail"] #formLayer{animation:formSail 3.4s ease-in-out infinite}
+body[data-form-kind="float"] #formLayer{animation:formFloat 4s ease-in-out infinite}
+body[data-form-kind="beat"] #formLayer{animation:formBeat .7s ease-in-out infinite}
+body[data-form-kind="bob"] #formLayer,body[data-form-kind="wear"] #formLayer{animation:formFloat 3s ease-in-out infinite}
+.sleeping #formLayer{animation-play-state:paused}
+@keyframes formWalk{0%,100%{transform:translateX(-14px) rotate(-2deg)}25%{transform:translate(-4px,-7px)}50%{transform:translateX(14px) rotate(2deg)}75%{transform:translate(4px,-7px)}}
+@keyframes formFly{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-22px) rotate(3deg)}}
+@keyframes formSwim{0%,100%{transform:translate(-16px,0) rotate(-4deg)}50%{transform:translate(16px,-8px) rotate(4deg)}}
+@keyframes formFlutter{0%,100%{transform:translate(0,0) rotate(-6deg) scale(1,.96)}50%{transform:translate(6px,-10px) rotate(6deg) scale(1,1.04)}}
+@keyframes formSway{0%,100%{transform:rotate(-5deg)}50%{transform:rotate(5deg)}}
+@keyframes formWobble{0%,100%{transform:scale(1,1)}50%{transform:scale(1.05,.94)}}
+@keyframes formDrive{0%{transform:translateX(-34px)}45%{transform:translate(0,-3px)}100%{transform:translateX(34px)}}
+@keyframes formSail{0%,100%{transform:rotate(-4deg) translateY(0)}50%{transform:rotate(4deg) translateY(-8px)}}
+@keyframes formFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+@keyframes formBeat{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+@media(prefers-reduced-motion:reduce){#formLayer{animation:none!important}}

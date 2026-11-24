@@ -185,3 +185,15 @@ console.log('Verified: words become shapes, particles tolerated, form book, reve
 // Ambiguous one-syllable names need a particle; bare everyday uses stay put.
 for(const [t,w] of [['새 학기 시작','none'],['새가 날아','새'],['해 봐','none'],['해가 떴어','해'],['배 고파','none'],['배를 탔어','배'],['눈이 와','눈'],['차 타고 가자','none'],['차를 마셔','차']])assert.equal(vm.runInContext('shapeOf('+JSON.stringify(t)+')?.word||"none"',context),w,t);
 console.log('Verified: ambiguous one-syllable shape words.');
+// v0.17: shapes move by kind, answer in their own voice, and wearables layer on top of the current form.
+assert.equal(vm.runInContext("kindOf(SHAPES['고양이'])+kindOf(SHAPES['기차'])+kindOf(SHAPES['왕관'])+kindOf(SHAPES['집'])",context),'walkdrivewearbob');
+vm.runInContext('state.sleeping=false;combo=0;state.words.form=null;render()',context);feed('고양이가 놀러 왔어');
+assert.equal(document.body.dataset.formKind,'walk');assert.match(els.speech.textContent,/야옹~/);
+feed('왕관 씌워줄게');assert.equal(vm.runInContext('state.words.form.word',context),'고양이');assert.deepEqual(vm.runInContext('state.words.form.wear.map(w=>w.word)',context),['왕관']);
+assert.match(els.formWear.innerHTML,/👑/);assert.match(els.speech.textContent,/「왕관」을 걸쳐볼게/);
+feed('안경도 써봐');feed('모자도 써봐');assert.deepEqual(vm.runInContext('state.words.form.wear.map(w=>w.word)',context),['안경','모자']);
+feed('이번엔 강아지');assert.equal(vm.runInContext('state.words.form.word',context),'강아지');assert.equal(vm.runInContext('state.words.form.wear.length',context),2);
+vm.runInContext('lastCare=0',context);els.stroke.onclick();assert.match(els.speech.textContent,/^멍멍~/);
+feed('원래대로 돌아와');assert.equal(vm.runInContext('state.words.form',context),null);assert.equal(document.body.dataset.formKind,'');
+vm.runInContext("state.words.form={word:'고양이',emoji:'🐈',wear:[{word:'집',emoji:'🏠'},{word:'왕관',emoji:'👑'},'bad']};normalizeWords(state)",context);assert.deepEqual(vm.runInContext('state.words.form.wear.map(w=>w.word)',context),['왕관']);
+console.log('Verified: shape kinds, own voices, layered wearables, stroke voice, revert.');

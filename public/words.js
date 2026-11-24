@@ -16,27 +16,38 @@ function shapeOf(text){
   for(const c of stems(t))if(Object.hasOwn(SHAPES,c)&&!(c===t&&BARE_AMBIGUOUS.has(c)))return {word:c,emoji:SHAPES[c]}}
  return null;
 }
+// Each shape answers in its own voice: a few named sounds, otherwise one per kind of movement.
+const SHAPE_SOUNDS={고양이:'야옹',강아지:'멍멍',개:'멍멍',닭:'꼬끼오',병아리:'삐약삐약',오리:'꽥꽥',돼지:'꿀꿀',소:'음매',양:'매에',염소:'메에',개구리:'개굴개굴',쥐:'찍찍',사자:'어흥',호랑이:'어흥',늑대:'아우우',부엉이:'부엉부엉',새:'짹짹',참새:'짹짹',벌:'윙윙',꿀벌:'윙윙',모기:'애앵',기차:'칙칙폭폭',자동차:'부릉부릉',버스:'부릉부릉',비행기:'슈웅',로켓:'슈우웅',배:'뿌우',종:'딩동',시계:'째깍째깍',비:'톡톡',번개:'우르릉 쾅',바람:'휘이잉',파도:'철썩',바다:'철썩',불:'타닥타닥',드럼:'둥둥',피아노:'도레미',기타:'둥가둥가',유령:'우우~',고래:'푸우'};
+const KIND_SOUNDS={walk:'(꼬리를 살랑)',fly:'파닥파닥',swim:'뻐끔뻐끔',flutter:'팔랑팔랑',sway:'살랑살랑',wobble:'말랑말랑',drive:'부릉부릉',sail:'출렁출렁',float:'두둥실',beat:'둥둥',wear:'반짝'};
+const kindOf=emoji=>SHAPE_KIND[emoji]||'bob';
+function formSound(){const f=state.xp>=FORM_AT&&state.words?.form;return f?SHAPE_SOUNDS[f.word]||KIND_SOUNDS[kindOf(f.emoji)]||'':''}
+// Hats sit on top, glasses on the face, anything else at the side; a second item on the same spot shifts right.
+const wearSlot=emoji=>/👒|🎩|🧢|👑|⛑|🪖|🎓/u.test(emoji)?'top':/👓|🕶|🥽/u.test(emoji)?'eyes':'side';
+function wearSpot(emoji,shift){const s=wearSlot(emoji);return {x:(s==='side'?372:250)+(shift?64:0),y:s==='top'?60:s==='eyes'?165:252,size:s==='top'?110:s==='eyes'?120:90}}
 // Returns the new form, 'revert', or null. Call before render().
 function takeShape(text){
  normalizeWords(state);if(state.xp<FORM_AT)return null;
  if(REVERT.test(text)){if(!state.words.form)return null;state.words.form=null;return 'revert'}
  const f=shapeOf(text);if(!f)return null;
- state.words.form={...f,at:Date.now()};
+ const cur=state.words.form;
+ if(cur&&kindOf(f.emoji)==='wear'&&kindOf(cur.emoji)!=='wear'){const wear=(cur.wear||[]).filter(x=>x.emoji!==f.emoji);wear.push({word:f.word,emoji:f.emoji});cur.wear=wear.slice(-2);return {...f,worn:true}}
+ state.words.form={...f,at:Date.now(),wear:cur?.wear||[]};
  if(!state.words.forms.some(x=>x.word===f.word)){state.words.forms.unshift({...f,at:Date.now()});state.words.forms=state.words.forms.slice(0,300);state.fragments=(state.fragments||0)+1;notifyDiscovery('새로운 모습 · '+f.emoji+' '+f.word+' · 1조각')}
  return f;
 }
-function shapeSpeech(f){return f==='revert'?' 원래 모습으로 돌아왔어.':f?' '+josa('「'+f.word,'」이','」가')+' 되어볼게!':''}
-function setForm(word){normalizeWords(state);if(busy||activity)return false;if(word===null){state.words.form=null}else{const f=state.words.forms.find(x=>x.word===word);if(!f)return false;state.words.form={word:f.word,emoji:f.emoji,at:Date.now()}}render();speak(shapeSpeech(word===null?'revert':state.words.form).trim());return true}
+function shapeSpeech(f){if(f==='revert')return ' 원래 모습으로 돌아왔어.';if(!f)return '';const sound=formSound();return f.worn?' '+josa('「'+f.word,'」을','」를')+' 걸쳐볼게! '+sound:' '+josa('「'+f.word,'」이','」가')+' 되어볼게! '+(sound?sound+'~':'')}
+function setForm(word){normalizeWords(state);if(busy||activity)return false;if(word===null){state.words.form=null}else{const f=state.words.forms.find(x=>x.word===word);if(!f)return false;state.words.form={word:f.word,emoji:f.emoji,at:Date.now(),wear:state.words.form?.wear||[]}}render();speak(shapeSpeech(word===null?'revert':state.words.form).trim());return true}
 let shownForm='';
 function renderForm(){
- const f=state.xp>=FORM_AT?state.words.form:null,key=f?f.emoji:'';document.body.classList.toggle('has-form',!!f);
+ const f=state.xp>=FORM_AT?state.words.form:null,key=f?f.emoji:'';document.body.classList.toggle('has-form',!!f);document.body.dataset.formKind=f?kindOf(f.emoji):'';
+ $('formWear').innerHTML=(f?.wear||[]).map((w,i,all)=>{const p=wearSpot(w.emoji,i>0&&wearSlot(all[0].emoji)===wearSlot(w.emoji));return '<text x="'+p.x+'" y="'+p.y+'" font-size="'+p.size+'" text-anchor="middle" dominant-baseline="central">'+w.emoji+'</text>'}).join('');
  if(key!==shownForm){shownForm=key;const g=$('formGlyph');g.textContent=key;g.classList.remove('form-in');void g.offsetWidth;if(key)g.classList.add('form-in')}
 }
 function normalizeWords(s){
  if(!s.words||typeof s.words!=='object'||Array.isArray(s.words))s.words={};const w=s.words;
  if(!Array.isArray(w.eaten))w.eaten=[];w.eaten=[...new Set(w.eaten.filter(t=>typeof t==='string'&&t.length<=24))].slice(-500);
  const okForm=f=>f&&typeof f.word==='string'&&f.word.length<=12&&typeof f.emoji==='string'&&f.emoji.length<=16;
- if(!okForm(w.form))w.form=null;if(!Array.isArray(w.forms))w.forms=[];w.forms=w.forms.filter(okForm).map(f=>({word:f.word,emoji:f.emoji,at:Number.isFinite(f.at)?f.at:0})).slice(0,300);
+ if(!okForm(w.form))w.form=null;else{if(!Array.isArray(w.form.wear))w.form.wear=[];w.form.wear=w.form.wear.filter(x=>okForm(x)&&kindOf(x.emoji)==='wear').map(x=>({word:x.word,emoji:x.emoji})).slice(-2)}if(!Array.isArray(w.forms))w.forms=[];w.forms=w.forms.filter(okForm).map(f=>({word:f.word,emoji:f.emoji,at:Number.isFinite(f.at)?f.at:0})).slice(0,300);
  if(!Array.isArray(w.phrases))w.phrases=[];w.phrases=w.phrases.filter(p=>p&&typeof p.text==='string'&&p.text.length<=24&&Number.isFinite(p.at)).map(p=>({text:p.text,at:p.at,eaten:!!p.eaten})).slice(0,60);
 }
 // ponytail: suffix-strip particle heuristic; dictionary words (고양이) are kept whole. Swap for a morpheme list if scraps read oddly.
